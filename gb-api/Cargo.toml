@@ -1,0 +1,24 @@
+[package]
+name = "gb-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+gb-core = { path = "../gb-core" }
+gb-messaging = { path = "../gb-messaging" }
+gb-monitoring = { path = "../gb-monitoring" }
+tokio.workspace = true
+axum = { version = "0.7.9", features = ["ws", "multipart"] }
+tower.workspace = true
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+async-trait.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
+tokio-test = "0.4"

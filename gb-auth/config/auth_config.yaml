@@ -1,0 +1,23 @@
+jwt:
+  secret: your_jwt_secret_key_here
+  expiration: 3600  # 1 hour in seconds
+
+password:
+  min_length: 8
+  require_uppercase: true
+  require_lowercase: true
+  require_numbers: true
+  require_special: true
+
+oauth:
+  providers:
+    google:
+      client_id: your_google_client_id
+      client_secret: your_google_client_secret
+    github:
+      client_id: your_github_client_id
+      client_secret: your_github_client_secret
+
+redis:
+  url: redis://localhost:6379
+  session_ttl: 86400  # 24 hours in seconds

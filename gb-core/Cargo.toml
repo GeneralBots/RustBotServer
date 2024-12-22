@@ -1,0 +1,22 @@
+[package]
+name = "gb-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
+sqlx.workspace = true
+redis.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+mockall.workspace = true
+rstest.workspace = true
+tokio-test = "0.4"

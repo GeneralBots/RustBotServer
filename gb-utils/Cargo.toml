@@ -1,0 +1,24 @@
+[package]
+name = "gb-utils"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+gb-core = { path = "../gb-core" }
+gb-document = { path = "../gb-document" }
+gb-image = { path = "../gb-image" }
+async-trait.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+mime = "0.3"
+mime_guess = "2.0"
+uuid = { version = "1.6", features = ["v4"] }
+
+[dev-dependencies]
+rstest.workspace = true
+tokio-test = "0.4"

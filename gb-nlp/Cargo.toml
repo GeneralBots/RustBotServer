@@ -1,0 +1,23 @@
+[package]
+name = "gb-nlp"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+gb-core = { path = "../gb-core" }
+rust-bert = "0.21"
+tokenizers = "0.15"
+whatlang = "0.16"
+async-trait.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tch = "0.13"
+
+[dev-dependencies]
+rstest.workspace = true
+tokio-test = "0.4"
