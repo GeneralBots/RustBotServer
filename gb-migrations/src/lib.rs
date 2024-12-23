@@ -4,9 +4,10 @@ use tracing::info;
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("Running database migrations");
     
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS customers (
+    // Create tables
+    let table_queries = [
+        // Customers table
+        r#"CREATE TABLE IF NOT EXISTS customers (
             id UUID PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             subscription_tier VARCHAR(50) NOT NULL,
@@ -14,9 +15,10 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
             max_instances INTEGER NOT NULL,
             metadata JSONB NOT NULL DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS instances (
+        )"#,
+        
+        // Instances table
+        r#"CREATE TABLE IF NOT EXISTS instances (
             id UUID PRIMARY KEY,
             customer_id UUID NOT NULL REFERENCES customers(id),
             name VARCHAR(255) NOT NULL,
@@ -25,9 +27,10 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
             region VARCHAR(50) NOT NULL,
             config JSONB NOT NULL DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS rooms (
+        )"#,
+        
+        // Rooms table
+        r#"CREATE TABLE IF NOT EXISTS rooms (
             id UUID PRIMARY KEY,
             customer_id UUID NOT NULL REFERENCES customers(id),
             instance_id UUID NOT NULL REFERENCES instances(id),
@@ -36,9 +39,10 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
             status VARCHAR(50) NOT NULL,
             config JSONB NOT NULL DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS messages (
+        )"#,
+        
+        // Messages table
+        r#"CREATE TABLE IF NOT EXISTS messages (
             id UUID PRIMARY KEY,
             customer_id UUID NOT NULL REFERENCES customers(id),
             instance_id UUID NOT NULL REFERENCES instances(id),
@@ -49,9 +53,10 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
             metadata JSONB NOT NULL DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
             shard_key INTEGER NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS users (
+        )"#,
+        
+        // Users table
+        r#"CREATE TABLE IF NOT EXISTS users (
             id UUID PRIMARY KEY,
             customer_id UUID NOT NULL REFERENCES customers(id),
             instance_id UUID NOT NULL REFERENCES instances(id),
@@ -60,9 +65,10 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
             status VARCHAR(50) NOT NULL,
             metadata JSONB NOT NULL DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS tracks (
+        )"#,
+        
+        // Tracks table
+        r#"CREATE TABLE IF NOT EXISTS tracks (
             id UUID PRIMARY KEY,
             room_id UUID NOT NULL REFERENCES rooms(id),
             user_id UUID NOT NULL REFERENCES users(id),
@@ -70,29 +76,43 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
             status VARCHAR(50) NOT NULL,
             metadata JSONB NOT NULL DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS subscriptions (
+        )"#,
+        
+        // Subscriptions table
+        r#"CREATE TABLE IF NOT EXISTS subscriptions (
             id UUID PRIMARY KEY,
             track_id UUID NOT NULL REFERENCES tracks(id),
             user_id UUID NOT NULL REFERENCES users(id),
             status VARCHAR(50) NOT NULL,
             metadata JSONB NOT NULL DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
+        )"#,
+    ];
 
-        -- Create indexes for performance
-        CREATE INDEX IF NOT EXISTS idx_instances_customer_id ON instances(customer_id);
-        CREATE INDEX IF NOT EXISTS idx_rooms_instance_id ON rooms(instance_id);
-        CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
-        CREATE INDEX IF NOT EXISTS idx_messages_shard_key ON messages(shard_key);
-        CREATE INDEX IF NOT EXISTS idx_tracks_room_id ON tracks(room_id);
-        CREATE INDEX IF NOT EXISTS idx_subscriptions_track_id ON subscriptions(track_id);
-        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-        "#,
-    )
-    .execute(pool)
-    .await?;
+    // Create indexes
+    let index_queries = [
+        "CREATE INDEX IF NOT EXISTS idx_instances_customer_id ON instances(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_rooms_instance_id ON rooms(instance_id)",
+        "CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)",
+        "CREATE INDEX IF NOT EXISTS idx_messages_shard_key ON messages(shard_key)",
+        "CREATE INDEX IF NOT EXISTS idx_tracks_room_id ON tracks(room_id)",
+        "CREATE INDEX IF NOT EXISTS idx_subscriptions_track_id ON subscriptions(track_id)",
+        "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+    ];
+
+    // Execute table creation queries
+    for query in table_queries {
+        sqlx::query(query)
+            .execute(pool)
+            .await?;
+    }
+
+    // Execute index creation queries
+    for query in index_queries {
+        sqlx::query(query)
+            .execute(pool)
+            .await?;
+    }
 
     info!("Migrations completed successfully");
     Ok(())

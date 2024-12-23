@@ -1,39 +1,105 @@
+//! Core domain models for the general-bots system
+//! File: gb-core/src/models.rs
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
+use std::str::FromStr;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Message {
-    pub id: Uuid,
-    pub conversation_id: Uuid,
-    pub sender_id: Uuid,
-    pub content: String,
-    pub status: String,
-    pub message_type: String,
-    pub kind: String,  // Add this field
-    pub shard_key: i32,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
+#[derive(Debug)]
+pub struct CoreError(pub String);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Instance {
     pub id: Uuid,
     pub customer_id: Uuid,
     pub name: String,
+    pub status: String,
     pub shard_id: i32,
+    pub region: String,
+    pub config: JsonValue,
     pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Room {
     pub id: Uuid,
     pub instance_id: Uuid,
     pub name: String,
-    pub is_active: bool,
+    pub kind: String,
+    pub status: String,
+    pub config: JsonValue,
     pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Message {
+    pub id: Uuid,
+    pub customer_id: Uuid,
+    pub instance_id: Uuid,
+    pub conversation_id: Uuid,
+    pub sender_id: Uuid,
+    pub kind: String,
+    pub content: String,
+    pub metadata: JsonValue,
+    pub created_at: DateTime<Utc>,
+    pub shard_key: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MessageFilter {
+    pub conversation_id: Option<Uuid>,
+    pub sender_id: Option<Uuid>,
+    pub from_date: Option<DateTime<Utc>>,
+    pub to_date: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SearchQuery {
+    pub query: String,
+    pub conversation_id: Option<Uuid>,
+    pub from_date: Option<DateTime<Utc>>,
+    pub to_date: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileUpload {
+    pub content: Vec<u8>,
+    pub filename: String,
+    pub content_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileContent {
+    pub content: Vec<u8>,
+    pub content_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Status {
+    pub code: String,
+    pub timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum UserStatus {
+    Active,
+    Inactive,
+    Suspended,
+}
+
+impl FromStr for UserStatus {
+    type Err = CoreError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "active" => Ok(UserStatus::Active),
+            "inactive" => Ok(UserStatus::Inactive),
+            "suspended" => Ok(UserStatus::Suspended),
+            _ => Ok(UserStatus::Inactive)
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,20 +112,24 @@ pub struct Track {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: Uuid,
+    pub customer_id: Uuid,
     pub instance_id: Uuid,
-    pub email: String,
     pub name: String,
+    pub email: String,
+    pub password_hash: String,
+    pub status: UserStatus,
+    pub metadata: JsonValue,
     pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Customer {
     pub id: Uuid,
     pub name: String,
+    pub max_instances: u32,
     pub email: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -112,47 +182,12 @@ pub struct RoomStats {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageId(pub Uuid);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MessageFilter {
-    pub conversation_id: Option<Uuid>,
-    pub sender_id: Option<Uuid>,
-    pub from_date: Option<DateTime<Utc>>,
-    pub to_date: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Status {
-    pub code: String,
-    pub timestamp: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SearchQuery {
-    pub query: String,
-    pub conversation_id: Option<Uuid>,
-    pub from_date: Option<DateTime<Utc>>,
-    pub to_date: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FileUpload {
-    pub content: Vec<u8>,
-    pub filename: String,
-    pub content_type: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FileInfo {
     pub id: Uuid,
     pub filename: String,
     pub content_type: String,
-    pub size: u64,
+    pub size: usize,
+    pub url: String,
     pub created_at: DateTime<Utc>,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FileContent {
-    pub content: Vec<u8>,
-    pub content_type: String,
-}
-

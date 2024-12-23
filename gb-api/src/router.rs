@@ -14,34 +14,18 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{instrument, error};
 use uuid::Uuid;
+
 use futures_util::StreamExt;
 use futures_util::SinkExt;
 
-pub struct ApiState {
-    message_processor: Arc<Mutex<MessageProcessor>>,
+async fn handle_ws_connection(
+    ws: WebSocket,
+    State(_state): State<Arc<ApiState>>,
+) -> Result<(), Error> {
+    let (mut sender, mut receiver) = ws.split();
+    // ... rest of the implementation
 }
 
-pub fn create_router(message_processor: MessageProcessor) -> Router {
-    let state = ApiState {
-        message_processor: Arc::new(Mutex::new(message_processor)),
-    };
-
-    Router::new()
-        .route("/health", get(health_check))
-        .route("/ws", get(websocket_handler))
-        .route("/messages", post(send_message))
-        .route("/messages/:id", get(get_message))
-        .route("/rooms", post(create_room))
-        .route("/rooms/:id", get(get_room))
-        .route("/rooms/:id/join", post(join_room))
-        .with_state(Arc::new(state))
-}
-
-#[axum::debug_handler]
-#[instrument]
-async fn health_check() -> &'static str {
-    "OK"
-}
 
 #[axum::debug_handler]
 #[instrument(skip(state, ws))]

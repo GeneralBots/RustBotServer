@@ -1,26 +1,27 @@
-use gb_core::{Result, Error};
 use std::{
-    process::{Command, Stdio},
-    path::PathBuf,
+    path::{Path, PathBuf},
+    process::{Child, Command, Stdio},
 };
 use tokio::sync::Mutex;
-use tracing::{instrument, error};
+use tracing::{error, instrument};
 use uuid::Uuid;
+use gb_core::{Error, Result};
+
+#[derive(Debug)]
+struct Process {
+    id: Uuid,
+    handle: Child,
+}
 
 pub struct ProcessAutomation {
     working_dir: PathBuf,
     processes: Mutex<Vec<Process>>,
 }
 
-pub struct Process {
-    id: Uuid,
-    handle: std::process::Child,
-}
-
 impl ProcessAutomation {
-    pub fn new<P: Into<PathBuf>>(working_dir: P) -> Self {
+    pub fn new(working_dir: impl AsRef<Path>) -> Self {
         Self {
-            working_dir: working_dir.into(),
+            working_dir: working_dir.as_ref().to_path_buf(),
             processes: Mutex::new(Vec::new()),
         }
     }
@@ -35,6 +36,7 @@ impl ProcessAutomation {
             .output()
             .map_err(|e| Error::internal(format!("Failed to execute command: {}", e)))?;
 
+        if !output.status.success() {
             let error = String::from_utf8_lossy(&output.stderr);
             return Err(Error::internal(format!("Command failed: {}", error)));
         }
@@ -43,7 +45,6 @@ impl ProcessAutomation {
         Ok(stdout)
     }
 
-    #[instrument(skip(self, command))]
     pub async fn spawn(&self, command: &str, args: &[&str]) -> Result<Uuid> {
         let child = Command::new(command)
             .args(args)
@@ -53,38 +54,31 @@ impl ProcessAutomation {
             .spawn()
             .map_err(|e| Error::internal(format!("Failed to spawn process: {}", e)))?;
 
-        let process = Process {
-            id: Uuid::new_v4(),
-            handle: child,
-        };
-
+        let id = Uuid::new_v4();
         let mut processes = self.processes.lock().await;
-        processes.push(process);
-
-        Ok(process.id)
+        processes.push(Process { id, handle: child });
+        
+        Ok(id)
     }
 
-    #[instrument(skip(self))]
     pub async fn kill(&self, id: Uuid) -> Result<()> {
         let mut processes = self.processes.lock().await;
         
         if let Some(index) = processes.iter().position(|p| p.id == id) {
-            let process = processes.remove(index);
+            let mut process = processes.remove(index);
             process.handle.kill()
                 .map_err(|e| Error::internal(format!("Failed to kill process: {}", e)))?;
-        }
-
+            }
         Ok(())
     }
 
-    #[instrument(skip(self))]
     pub async fn cleanup(&self) -> Result<()> {
         let mut processes = self.processes.lock().await;
         
         for process in processes.iter_mut() {
             if let Err(e) = process.handle.kill() {
                 error!("Failed to kill process {}: {}", process.id, e);
-            }
+}
         }
 
         processes.clear();
@@ -95,35 +89,32 @@ impl ProcessAutomation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rstest::*;
-    use std::fs;
     use tempfile::tempdir;
 
-    #[fixture]
     fn automation() -> ProcessAutomation {
         let dir = tempdir().unwrap();
         ProcessAutomation::new(dir.path())
     }
 
-    #[rstest]
     #[tokio::test]
-    async fn test_execute(automation: ProcessAutomation) -> Result<()> {
+    async fn test_execute() -> Result<()> {
+        let automation = automation();
         let output = automation.execute("echo", &["Hello, World!"]).await?;
         assert!(output.contains("Hello, World!"));
         Ok(())
     }
 
-    #[rstest]
     #[tokio::test]
-    async fn test_spawn_and_kill(automation: ProcessAutomation) -> Result<()> {
+    async fn test_spawn_and_kill() -> Result<()> {
+        let automation = automation();
         let id = automation.spawn("sleep", &["1"]).await?;
         automation.kill(id).await?;
         Ok(())
     }
 
-    #[rstest]
     #[tokio::test]
-    async fn test_cleanup(automation: ProcessAutomation) -> Result<()> {
+    async fn test_cleanup() -> Result<()> {
+        let automation = automation();
         automation.spawn("sleep", &["1"]).await?;
         automation.spawn("sleep", &["2"]).await?;
         automation.cleanup().await?;
@@ -132,5 +123,5 @@ mod tests {
         assert!(processes.is_empty());
         
         Ok(())
-    }
+}
 }

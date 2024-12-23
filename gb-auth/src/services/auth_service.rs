@@ -29,7 +29,7 @@ impl AuthService {
 
     pub async fn login(&self, request: LoginRequest) -> Result<LoginResponse> {
         let user = sqlx::query_as!(
-            User,
+            DbUser,
             "SELECT * FROM users WHERE email = $1",
             request.email
         )

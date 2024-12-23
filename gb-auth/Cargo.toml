@@ -21,12 +21,6 @@ ring = "0.17"
 tokio.workspace = true
 async-trait.workspace = true
 
-# Web Framework
-axum = { version = "0.7.9" }
-axum-extra = { version = "0.7.4" }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["auth", "cors", "trace"] }
-headers = "0.3"
 
 # Database
 sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "postgres", "uuid", "chrono", "json"] }
@@ -46,6 +40,13 @@ tracing.workspace = true
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.6", features = ["serde", "v4"] }
 validator = { version = "0.16", features = ["derive"] }
+
+# Web Framework
+axum = { version = "0.7.9" }
+axum-extra = { version = "0.7" }  # Add headers feature
+tower = "0.4"
+tower-http = { version = "0.5", features = ["auth", "cors", "trace"] }
+headers = "0.3"
 
 [dev-dependencies]
 rstest = "0.18"

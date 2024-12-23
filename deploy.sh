@@ -23,6 +23,11 @@ kubectl apply -f k8s/base/document.yaml
 # Deploy ingress rules
 kubectl apply -f k8s/base/ingress.yaml
 
+# Create DB.
+
+cargo run -p gb-migrations --bin migrations
+
 echo "Deployment completed successfully!"
 echo "Please wait for all pods to be ready..."
 kubectl -n general-bots get pods -w
+

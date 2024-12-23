@@ -5,6 +5,10 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "migrations"
+path = "src/bin/migrations.rs"
+
 [dependencies]
 tokio.workspace = true
 sqlx.workspace = true

@@ -2,12 +2,12 @@ pub mod processor;
 pub mod converter;
 
 pub use processor::ImageProcessor;
-pub use converter::{ImageConverter, ImageFormat};
+pub use converter::ImageConverter;
+// Remove the ImageFormat re-export since it's private in the image crate
+pub use image::ImageFormat;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use gb_core::Result;
     use super::*;
     use gb_core::Result;
     use image::{DynamicImage, Rgba};
@@ -48,7 +48,6 @@ mod tests {
         let jpeg_data = ImageConverter::to_jpeg(&image, 80)?;
         let png_data = ImageConverter::to_png(&image)?;
         let gif_data = ImageConverter::to_gif(&image)?;
-
 
         Ok(())
     }
