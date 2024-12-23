@@ -88,11 +88,6 @@ echo "Setting up PostgreSQL database..."
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
 
-# Create database and user (with error handling)
-sudo -u postgres psql -c "CREATE DATABASE generalbots;" 2>/dev/null || echo "Database might already exist"
-sudo -u postgres psql -c "CREATE USER gbuser WITH PASSWORD 'gbpassword';" 2>/dev/null || echo "User might already exist"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE generalbots TO gbuser;" 2>/dev/null || echo "Privileges might already be granted"
-
 # Start Redis
 echo "Starting Redis service..."
 sudo systemctl start redis-server
