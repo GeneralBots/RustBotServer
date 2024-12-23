@@ -1,16 +1,21 @@
 use axum::{
     routing::{get, post},
     Router,
-    extract::{Path, State, WebSocketUpgrade},
+    extract::{
+        ws::{WebSocket, Message as WsMessage},
+        Path, State, WebSocketUpgrade,
+    },
     response::IntoResponse,
     Json,
 };
 use gb_core::{Result, Error, models::*};
-use gb_messaging::{MessageProcessor, MessageEnvelope};
+use gb_messaging::{MessageProcessor, MessageEnvelope}; 
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{instrument, error};
 use uuid::Uuid;
+use futures_util::StreamExt;
+use futures_util::SinkExt;
 
 pub struct ApiState {
     message_processor: Arc<Mutex<MessageProcessor>>,
@@ -32,11 +37,13 @@ pub fn create_router(message_processor: MessageProcessor) -> Router {
         .with_state(Arc::new(state))
 }
 
+#[axum::debug_handler]
 #[instrument]
 async fn health_check() -> &'static str {
     "OK"
 }
 
+#[axum::debug_handler]
 #[instrument(skip(state, ws))]
 async fn websocket_handler(
     State(state): State<Arc<ApiState>>,
@@ -58,6 +65,7 @@ async fn websocket_handler(
     })
 }
 
+#[axum::debug_handler]
 #[instrument(skip(state, message))]
 async fn send_message(
     State(state): State<Arc<ApiState>>,
@@ -71,45 +79,45 @@ async fn send_message(
 
     let mut processor = state.message_processor.lock().await;
     processor.sender().send(envelope.clone()).await
-        .map_err(|e| Error::Internal(format!("Failed to send message: {}", e)))?;
+        .map_err(|e| Error::internal(format!("Failed to send message: {}", e)))?;
 
     Ok(Json(MessageId(envelope.id)))
 }
 
+#[axum::debug_handler]
 #[instrument(skip(state))]
 async fn get_message(
     State(state): State<Arc<ApiState>>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Message>> {
-    // Implement message retrieval logic
     todo!()
 }
 
+#[axum::debug_handler]
 #[instrument(skip(state, config))]
 async fn create_room(
     State(state): State<Arc<ApiState>>,
     Json(config): Json<RoomConfig>,
 ) -> Result<Json<Room>> {
-    // Implement room creation logic
     todo!()
 }
 
+#[axum::debug_handler]
 #[instrument(skip(state))]
 async fn get_room(
     State(state): State<Arc<ApiState>>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Room>> {
-    // Implement room retrieval logic
     todo!()
 }
 
+#[axum::debug_handler]
 #[instrument(skip(state))]
 async fn join_room(
     State(state): State<Arc<ApiState>>,
     Path(id): Path<Uuid>,
     Json(user_id): Json<Uuid>,
 ) -> Result<Json<Connection>> {
-    // Implement room joining logic
     todo!()
 }
 

@@ -16,6 +16,8 @@ pub enum AuthError {
     TokenExpired,
     #[error("Invalid token")]
     InvalidToken,
+    #[error("Missing token")]
+    MissingToken,
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("Cache error: {0}")]

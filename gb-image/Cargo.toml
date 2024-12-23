@@ -10,8 +10,7 @@ gb-core = { path = "../gb-core" }
 image = { version = "0.24", features = ["webp", "jpeg", "png", "gif"] }
 imageproc = "0.23"
 rusttype = "0.9"
-tesseract = "0.13"
-opencv = { version = "0.82", features = ["clang-runtime"] }
+tesseract = "0.12"
 async-trait.workspace = true
 tokio.workspace = true
 serde.workspace = true
@@ -23,3 +22,7 @@ tracing.workspace = true
 rstest.workspace = true
 tokio-test = "0.4"
 tempfile = "3.8"
+
+
+[build-dependencies]
+reqwest = { version = "0.11", features = ["blocking"] }

@@ -10,12 +10,12 @@ impl ExcelProcessor {
     pub fn extract_data(data: &[u8]) -> Result<Vec<Vec<String>>> {
         let cursor = Cursor::new(data);
         let mut workbook = Xlsx::new(cursor)
-            .map_err(|e| Error::Internal(format!("Failed to read Excel file: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to read Excel file: {}", e)))?;
 
         let sheet_name = workbook.sheet_names()[0].clone();
         let range = workbook.worksheet_range(&sheet_name)
-            .ok_or_else(|| Error::Internal("Failed to get worksheet".to_string()))?
-            .map_err(|e| Error::Internal(format!("Failed to read range: {}", e)))?;
+            .ok_or_else(|| Error::internal("Failed to get worksheet".to_string()))?
+            .map_err(|e| Error::internal(format!("Failed to read range: {}", e)))?;
 
         let mut result = Vec::new();
         for row in range.rows() {

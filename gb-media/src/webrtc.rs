@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use gb_core::{
     models::*,
     traits::*,
-    Result, Error,
+    Result, Error, Connection,
 };
 use uuid::Uuid;
 use webrtc::{
@@ -12,8 +12,12 @@ use webrtc::{
     peer_connection::peer_connection_state::RTCPeerConnectionState,
     peer_connection::RTCPeerConnection,
     track::track_remote::TrackRemote,
+    rtp::rtp_receiver::RTCRtpReceiver,
+    rtp::rtp_transceiver::RTCRtpTransceiver,
 };
 use tracing::{instrument, error};
+use std::sync::Arc;
+use chrono::Utc;
 
 pub struct WebRTCService {
     config: RTCConfiguration,
@@ -38,9 +42,28 @@ impl WebRTCService {
         
         let peer_connection = api.new_peer_connection(self.config.clone())
             .await
-            .map_err(|e| Error::WebRTC(format!("Failed to create peer connection: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to create peer connection: {}", e)))?;
 
         Ok(peer_connection)
+    }
+
+    async fn handle_track(&self, track: Arc<TrackRemote>, receiver: Arc<RTCRtpReceiver>, transceiver: Arc<RTCRtpTransceiver>) {
+                        tracing::info!(
+            "Received track: {} {}", 
+                            track.kind(),
+                            track.id()
+                        );
+                    }
+
+    async fn create_connection(&self) -> Result<Connection> {
+        Ok(Connection {
+            id: Uuid::new_v4(),
+            connected_at: Utc::now(),
+            ice_servers: self.config.ice_servers.clone(),
+            metadata: serde_json::Value::Object(serde_json::Map::new()),
+            room_id: Uuid::new_v4(),
+            user_id: Uuid::new_v4(),
+        })
     }
 }
 
@@ -48,7 +71,6 @@ impl WebRTCService {
 impl RoomService for WebRTCService {
     #[instrument(skip(self))]
     async fn create_room(&self, config: RoomConfig) -> Result<Room> {
-        // Create room implementation
         todo!()
     }
 
@@ -56,14 +78,13 @@ impl RoomService for WebRTCService {
     async fn join_room(&self, room_id: Uuid, user_id: Uuid) -> Result<Connection> {
         let peer_connection = self.create_peer_connection().await?;
 
-        // Setup connection handlers
         peer_connection
             .on_peer_connection_state_change(Box::new(move |s: RTCPeerConnectionState| {
                 Box::pin(async move {
                     match s {
                         RTCPeerConnectionState::Connected => {
                             tracing::info!("Peer connection connected");
-                        }
+    }
                         RTCPeerConnectionState::Disconnected
                         | RTCPeerConnectionState::Failed
                         | RTCPeerConnectionState::Closed => {
@@ -74,58 +95,35 @@ impl RoomService for WebRTCService {
                 })
             }));
 
-        peer_connection
-            .on_track(Box::new(move |track: Option<Arc<TrackRemote>>, _receiver| {
-                Box::pin(async move {
-                    if let Some(track) = track {
-                        tracing::info!(
-                            "Received track: {} {}", 
-                            track.kind(),
-                            track.id()
-                        );
-                    }
-                })
-            }));
-
-        // Create connection object
-        let connection = Connection {
-            id: Uuid::new_v4(),
-            room_id,
-            user_id,
-            ice_servers: self.config.ice_servers.clone(),
-            metadata: serde_json::Value::Object(serde_json::Map::new()),
-        };
+        let mut connection = self.create_connection().await?;
+        connection.room_id = room_id;
+        connection.user_id = user_id;
 
         Ok(connection)
     }
 
     #[instrument(skip(self))]
     async fn leave_room(&self, room_id: Uuid, user_id: Uuid) -> Result<()> {
-        // Leave room implementation 
         todo!()
     }
 
     #[instrument(skip(self))]
     async fn publish_track(&self, track: TrackInfo) -> Result<Track> {
-        // Publish track implementation
         todo!()
     }
 
     #[instrument(skip(self))]
     async fn subscribe_track(&self, track_id: Uuid) -> Result<Subscription> {
-        // Subscribe to track implementation
         todo!()
-    }
+}
 
     #[instrument(skip(self))]
     async fn get_participants(&self, room_id: Uuid) -> Result<Vec<Participant>> {
-        // Get participants implementation
         todo!()
     }
 
     #[instrument(skip(self))]
     async fn get_room_stats(&self, room_id: Uuid) -> Result<RoomStats> {
-        // Get room stats implementation
         todo!()
     }
 }
@@ -142,7 +140,6 @@ mod tests {
 
     #[rstest]
     #[tokio::test]
-
     async fn test_create_peer_connection(webrtc_service: WebRTCService) {
         let peer_connection = webrtc_service.create_peer_connection().await.unwrap();
         assert_eq!(

@@ -12,7 +12,7 @@ impl TiKVStorage {
         let config = Config::default();
         let client = RawClient::new(pd_endpoints, config)
             .await
-            .map_err(|e| Error::Internal(format!("TiKV client error: {}", e)))?;
+            .map_err(|e| Error::internal(format!("TiKV client error: {}", e)))?;
 
         Ok(Self { client })
     }
@@ -24,7 +24,7 @@ impl TiKVStorage {
             .await
             .map_err(|e| {
                 error!("TiKV put error: {}", e);
-                Error::Internal(format!("TiKV error: {}", e))
+                Error::internal(format!("TiKV error: {}", e))
             })
     }
 
@@ -35,7 +35,7 @@ impl TiKVStorage {
             .await
             .map_err(|e| {
                 error!("TiKV get error: {}", e);
-                Error::Internal(format!("TiKV error: {}", e))
+                Error::internal(format!("TiKV error: {}", e))
             })
     }
 
@@ -46,7 +46,7 @@ impl TiKVStorage {
             .await
             .map_err(|e| {
                 error!("TiKV delete error: {}", e);
-                Error::Internal(format!("TiKV error: {}", e))
+                Error::internal(format!("TiKV error: {}", e))
             })
     }
 
@@ -57,7 +57,7 @@ impl TiKVStorage {
             .await
             .map_err(|e| {
                 error!("TiKV batch get error: {}", e);
-                Error::Internal(format!("TiKV error: {}", e))
+                Error::internal(format!("TiKV error: {}", e))
             })
     }
 
@@ -68,7 +68,7 @@ impl TiKVStorage {
             .await
             .map_err(|e| {
                 error!("TiKV scan error: {}", e);
-                Error::Internal(format!("TiKV error: {}", e))
+                Error::internal(format!("TiKV error: {}", e))
             })
     }
 }

@@ -1,5 +1,11 @@
 use thiserror::Error;
-
+use axum::{
+    response::{IntoResponse, Response},
+    http::StatusCode,
+    Json,
+};
+use serde_json::json;
+        
 #[derive(Error, Debug)]
 pub enum ErrorKind {
     #[error("Database error: {0}")]
@@ -80,3 +86,30 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug)]
+pub enum AuthError {
+    InvalidToken,
+    MissingToken,
+    InvalidCredentials,
+    Internal(String),
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        let status = match self.kind {
+            ErrorKind::NotFound(_) => StatusCode::NOT_FOUND,
+            ErrorKind::Authentication(_) => StatusCode::UNAUTHORIZED,
+            ErrorKind::Authorization(_) => StatusCode::FORBIDDEN,
+            ErrorKind::InvalidInput(_) => StatusCode::BAD_REQUEST,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        
+        let body = Json(json!({
+            "error": self.message,
+            "kind": format!("{:?}", self.kind)
+        }));
+
+        (status, body).into_response()
+    }
+}

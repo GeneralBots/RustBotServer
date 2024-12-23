@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use sqlx::PgPool;
 use argon2::{
-    password_hash::{PasswordHash, PasswordHasher, SaltString},
+    password_hash::{PasswordHash, PasswordHasher, SaltString, PasswordVerifier},
     Argon2,
 };
 use rand::rngs::OsRng;
@@ -15,7 +15,7 @@ use crate::{
 pub struct AuthService {
     db: Arc<PgPool>,
     jwt_secret: String,
-    jwt_expiration: i64,
+    jwt_expiration: i64
 }
 
 impl AuthService {
@@ -69,7 +69,31 @@ impl AuthService {
     }
 
     fn generate_token(&self, user: &User) -> Result<String> {
-        // Token generation implementation
-        Ok("token".to_string())
+        use jsonwebtoken::{encode, EncodingKey, Header};
+        use serde::{Serialize, Deserialize};
+        use chrono::{Utc, Duration};
+
+        #[derive(Debug, Serialize, Deserialize)]
+        struct Claims {
+            sub: String,
+            exp: i64,
+            iat: i64,
+        }
+
+        let now = Utc::now();
+        let exp = now + Duration::seconds(self.jwt_expiration);
+
+        let claims = Claims {
+            sub: user.id.to_string(),
+            exp: exp.timestamp(),
+            iat: now.timestamp(),
+        };
+
+        encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(self.jwt_secret.as_bytes()),
+        )
+        .map_err(|e| AuthError::Internal(e.to_string()))
     }
 }

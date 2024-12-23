@@ -33,10 +33,10 @@ impl ProcessAutomation {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-            .map_err(|e| Error::Internal(format!("Failed to execute command: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to execute command: {}", e)))?;
 
             let error = String::from_utf8_lossy(&output.stderr);
-            return Err(Error::Internal(format!("Command failed: {}", error)));
+            return Err(Error::internal(format!("Command failed: {}", error)));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -51,7 +51,7 @@ impl ProcessAutomation {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| Error::Internal(format!("Failed to spawn process: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to spawn process: {}", e)))?;
 
         let process = Process {
             id: Uuid::new_v4(),
@@ -71,7 +71,7 @@ impl ProcessAutomation {
         if let Some(index) = processes.iter().position(|p| p.id == id) {
             let process = processes.remove(index);
             process.handle.kill()
-                .map_err(|e| Error::Internal(format!("Failed to kill process: {}", e)))?;
+                .map_err(|e| Error::internal(format!("Failed to kill process: {}", e)))?;
         }
 
         Ok(())

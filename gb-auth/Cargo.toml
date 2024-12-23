@@ -23,8 +23,9 @@ async-trait.workspace = true
 
 # Web Framework
 axum = { version = "0.7.9" }
+axum-extra = { version = "0.7.4" }
 tower = "0.4"
-tower-http = { version = "0.5", features = ["auth", "cors"] }
+tower-http = { version = "0.5", features = ["auth", "cors", "trace"] }
 headers = "0.3"
 
 # Database

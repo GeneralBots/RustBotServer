@@ -26,7 +26,7 @@ impl RedisCache {
             .map_err(Error::Redis)?;
 
         let serialized = serde_json::to_string(value)
-            .map_err(|e| Error::Internal(format!("Serialization error: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Serialization error: {}", e)))?;
 
         conn.set_ex(key, serialized, self.default_ttl.as_secs() as usize)
             .await
@@ -51,7 +51,7 @@ impl RedisCache {
         match value {
             Some(v) => {
                 let deserialized = serde_json::from_str(&v)
-                    .map_err(|e| Error::Internal(format!("Deserialization error: {}", e)))?;
+                    .map_err(|e| Error::internal(format!("Deserialization error: {}", e)))?;
                 Ok(Some(deserialized))
             }
             None => Ok(None),
@@ -95,7 +95,7 @@ impl RedisCache {
             .map_err(Error::Redis)?;
 
         let serialized = serde_json::to_string(value)
-            .map_err(|e| Error::Internal(format!("Serialization error: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Serialization error: {}", e)))?;
 
         conn.set_ex(key, serialized, ttl.as_secs() as usize)
             .await

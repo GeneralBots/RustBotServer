@@ -1,16 +1,30 @@
 use axum::{
     async_trait,
-    extract::{FromRequestParts, TypedHeader},
-    headers::{authorization::Bearer, Authorization},
-    http::request::Parts,
+    extract::FromRequestParts,
+    http::{request::Parts, StatusCode},
+    response::{IntoResponse, Response},
     RequestPartsExt,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use axum_extra::headers::{authorization::Bearer, Authorization};
+use axum_extra::TypedHeader;
+use crate::{models::User, AuthError};
 
-use crate::{
-    models::User,
-    AuthError,
-};
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        let (status, error_message) = match self {
+            AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
+            AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing token"),
+            AuthError::TokenExpired => (StatusCode::UNAUTHORIZED, "Token expired"),
+            AuthError::InvalidCredentials => (StatusCode::UNAUTHORIZED, "Invalid credentials"), 
+            AuthError::AuthenticationFailed => (StatusCode::UNAUTHORIZED, "Authentication failed"),
+            AuthError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
+            AuthError::Cache(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Cache error"),
+            AuthError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
+        };
+        
+        (status, error_message).into_response()
+    }
+}
 
 #[async_trait]
 impl<S> FromRequestParts<S> for User
@@ -23,9 +37,10 @@ where
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
-            .map_err(|_| AuthError::InvalidToken)?;
+            .map_err(|_| AuthError::MissingToken)?;
 
-        // Implement token validation and user extraction
-        todo!()
+        let token = bearer.token();
+        
+        todo!("Implement token validation")
     }
 }

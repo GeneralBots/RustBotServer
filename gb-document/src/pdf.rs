@@ -9,7 +9,7 @@ impl PdfProcessor {
     #[instrument(skip(data))]
     pub fn extract_text(data: &[u8]) -> Result<String> {
         let doc = Document::load_from(Cursor::new(data))
-            .map_err(|e| Error::Internal(format!("Failed to load PDF: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to load PDF: {}", e)))?;
 
         let mut text = String::new();
         for page_num in 1..=doc.get_pages().len() {
@@ -25,10 +25,10 @@ impl PdfProcessor {
     #[instrument(skip(doc))]
     fn extract_page_text(doc: &Document, page_num: u32) -> Result<String> {
         let page = doc.get_page(page_num)
-            .map_err(|e| Error::Internal(format!("Failed to get page {}: {}", page_num, e)))?;
+            .map_err(|e| Error::internal(format!("Failed to get page {}: {}", page_num, e)))?;
 
         let contents = doc.get_page_content(page)
-            .map_err(|e| Error::Internal(format!("Failed to get page content: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to get page content: {}", e)))?;
 
         let mut text = String::new();
         for content in contents.iter() {
@@ -49,7 +49,7 @@ impl PdfProcessor {
 
         for pdf_data in pdfs {
             let doc = Document::load_from(Cursor::new(pdf_data))
-                .map_err(|e| Error::Internal(format!("Failed to load PDF: {}", e)))?;
+                .map_err(|e| Error::internal(format!("Failed to load PDF: {}", e)))?;
 
             for (_, page) in doc.get_pages() {
                 merged.add_page(page.clone());
@@ -59,7 +59,7 @@ impl PdfProcessor {
 
         let mut output = Vec::new();
         merged.save_to(&mut Cursor::new(&mut output))
-            .map_err(|e| Error::Internal(format!("Failed to save merged PDF: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to save merged PDF: {}", e)))?;
 
         Ok(output)
     }
@@ -67,7 +67,7 @@ impl PdfProcessor {
     #[instrument(skip(data))]
     pub fn split_pdf(data: &[u8], pages: &[u32]) -> Result<Vec<Vec<u8>>> {
         let doc = Document::load_from(Cursor::new(data))
-            .map_err(|e| Error::Internal(format!("Failed to load PDF: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to load PDF: {}", e)))?;
 
         let mut result = Vec::new();
         for &page_num in pages {
@@ -76,7 +76,7 @@ impl PdfProcessor {
                 new_doc.add_page(page.clone());
                 let mut output = Vec::new();
                 new_doc.save_to(&mut Cursor::new(&mut output))
-                    .map_err(|e| Error::Internal(format!("Failed to save split PDF: {}", e)))?;
+                    .map_err(|e| Error::internal(format!("Failed to save split PDF: {}", e)))?;
                 result.push(output);
             }
         }

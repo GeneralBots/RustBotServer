@@ -1,118 +1,64 @@
 use gb_core::{Result, Error};
-use image::{
-    DynamicImage, ImageOutputFormat,
-    codecs::{webp, jpeg, png, gif},
-};
-use std::io::Cursor;
+use image::{DynamicImage, ImageFormat, codecs::webp};
 use tracing::instrument;
 
-pub struct ImageConverter;
-
-impl ImageConverter {
     #[instrument]
-    pub fn to_webp(image: &DynamicImage, quality: u8) -> Result<Vec<u8>> {
-        let mut buffer = Cursor::new(Vec::new());
-        let encoder = webp::WebPEncoder::new_with_quality(&mut buffer, quality as f32);
-        
-        encoder.encode(
-            image.as_bytes(),
-            image.width(),
-            image.height(),
-            image.color(),
-        ).map_err(|e| Error::Internal(format!("WebP conversion failed: {}", e)))?;
-
-        Ok(buffer.into_inner())
-    }
-
-    #[instrument]
-    pub fn to_jpeg(image: &DynamicImage, quality: u8) -> Result<Vec<u8>> {
-        let mut buffer = Cursor::new(Vec::new());
-        image.write_to(&mut buffer, ImageOutputFormat::Jpeg(quality))
-            .map_err(|e| Error::Internal(format!("JPEG conversion failed: {}", e)))?;
-
-        Ok(buffer.into_inner())
-    }
-
-    #[instrument]
-    pub fn to_png(image: &DynamicImage) -> Result<Vec<u8>> {
-        let mut buffer = Cursor::new(Vec::new());
-        image.write_to(&mut buffer, ImageOutputFormat::Png)
-            .map_err(|e| Error::Internal(format!("PNG conversion failed: {}", e)))?;
-
-        Ok(buffer.into_inner())
-    }
-
-    #[instrument]
-    pub fn to_gif(image: &DynamicImage) -> Result<Vec<u8>> {
-        let mut buffer = Cursor::new(Vec::new());
-        image.write_to(&mut buffer, ImageOutputFormat::Gif)
-            .map_err(|e| Error::Internal(format!("GIF conversion failed: {}", e)))?;
-
-        Ok(buffer.into_inner())
-    }
-
-    #[instrument]
-    pub fn get_format(data: &[u8]) -> Result<ImageFormat> {
-        let format = image::guess_format(data)
-            .map_err(|e| Error::Internal(format!("Failed to determine format: {}", e)))?;
-
+pub fn convert_to_format(image_data: &[u8], format: ImageFormat) -> Result<Vec<u8>> {
+    let img = image::load_from_memory(image_data)
+        .map_err(|e| Error::internal(format!("Failed to load image: {}", e)))?;
+    let mut output = Vec::new();
         match format {
-            image::ImageFormat::WebP => Ok(ImageFormat::WebP),
-            image::ImageFormat::Jpeg => Ok(ImageFormat::Jpeg),
-            image::ImageFormat::Png => Ok(ImageFormat::Png),
-            image::ImageFormat::Gif => Ok(ImageFormat::Gif),
-            _ => Err(Error::Internal("Unsupported format".to_string())),
+        ImageFormat::Jpeg => {
+            img.write_to(&mut output, ImageFormat::Jpeg)
+                .map_err(|e| Error::internal(format!("JPEG conversion failed: {}", e)))?;
         }
+        ImageFormat::Png => {
+            img.write_to(&mut output, ImageFormat::Png)
+                .map_err(|e| Error::internal(format!("PNG conversion failed: {}", e)))?;
     }
+        ImageFormat::WebP => {
+            img.write_to(&mut output, ImageFormat::WebP)
+                .map_err(|e| Error::internal(format!("WebP conversion failed: {}", e)))?;
 }
+        _ => return Err(Error::internal("Unsupported format".to_string())),
+    }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ImageFormat {
-    WebP,
-    Jpeg,
-    Png,
-    Gif,
+    Ok(output)
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use rstest::*;
 
     #[fixture]
-    fn test_image() -> DynamicImage {
-        DynamicImage::new_rgb8(100, 100)
+    fn test_image() -> Vec<u8> {
+        let img = DynamicImage::new_rgb8(100, 100);
+        let mut buffer = Vec::new();
+        img.write_to(&mut buffer, ImageFormat::Png).unwrap();
+        buffer
     }
 
     #[rstest]
-    fn test_webp_conversion(test_image: DynamicImage) -> Result<()> {
-        let webp_data = ImageConverter::to_webp(&test_image, 80)?;
-        assert!(!webp_data.is_empty());
-        assert_eq!(ImageConverter::get_format(&webp_data)?, ImageFormat::WebP);
-        Ok(())
-    }
-
-    #[rstest]
-    fn test_jpeg_conversion(test_image: DynamicImage) -> Result<()> {
-        let jpeg_data = ImageConverter::to_jpeg(&test_image, 80)?;
+    fn test_jpeg_conversion(test_image: Vec<u8>) -> Result<()> {
+        let jpeg_data = convert_to_format(&test_image, ImageFormat::Jpeg)?;
         assert!(!jpeg_data.is_empty());
-        assert_eq!(ImageConverter::get_format(&jpeg_data)?, ImageFormat::Jpeg);
+        assert_eq!(image::guess_format(&jpeg_data).unwrap(), ImageFormat::Jpeg);
         Ok(())
     }
 
     #[rstest]
-    fn test_png_conversion(test_image: DynamicImage) -> Result<()> {
-        let png_data = ImageConverter::to_png(&test_image)?;
+    fn test_png_conversion(test_image: Vec<u8>) -> Result<()> {
+        let png_data = convert_to_format(&test_image, ImageFormat::Png)?;
         assert!(!png_data.is_empty());
-        assert_eq!(ImageConverter::get_format(&png_data)?, ImageFormat::Png);
+        assert_eq!(image::guess_format(&png_data).unwrap(), ImageFormat::Png);
         Ok(())
     }
 
     #[rstest]
-    fn test_gif_conversion(test_image: DynamicImage) -> Result<()> {
-        let gif_data = ImageConverter::to_gif(&test_image)?;
-        assert!(!gif_data.is_empty());
-        assert_eq!(ImageConverter::get_format(&gif_data)?, ImageFormat::Gif);
+    fn test_webp_conversion(test_image: Vec<u8>) -> Result<()> {
+        let webp_data = convert_to_format(&test_image, ImageFormat::WebP)?;
+        assert!(!webp_data.is_empty());
+        assert_eq!(image::guess_format(&webp_data).unwrap(), ImageFormat::WebP);
         Ok(())
     }
 }

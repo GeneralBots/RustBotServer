@@ -103,7 +103,7 @@ cat >> gb-utils/src/processor.rs << 'EOL'
                 let headers: Vec<&str> = data[0].iter().map(|s| s.as_str()).collect();
                 ExcelProcessor::create_excel(&headers, &data[1..])
             }
-            _ => Err(Error::Internal(format!(
+            _ => Err(Error::internal(format!(
                 "Unsupported conversion: {:?} to {:?}",
                 file.content_type(),
                 target_type

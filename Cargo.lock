@@ -683,6 +683,7 @@ checksum = "edca88bc138befd0323b20752846e6587272d3b03b0343c8ea28a6f819e6e71f"
 dependencies = [
  "async-trait",
  "axum-core 0.4.5",
+ "axum-macros",
  "base64 0.22.1",
  "bytes",
  "futures-util",
@@ -749,6 +750,38 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "axum-extra"
+version = "0.7.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a93e433be9382c737320af3924f7d5fc6f89c155cf2bf88949d8f5126fab283f"
+dependencies = [
+ "axum 0.6.20",
+ "axum-core 0.3.4",
+ "bytes",
+ "futures-util",
+ "http 0.2.12",
+ "http-body 0.4.6",
+ "mime",
+ "pin-project-lite",
+ "serde",
+ "tokio",
+ "tower 0.4.13",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
+name = "axum-macros"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57d123550fa8d071b7255cb0cc04dc302baa6c8c4a79f55701552684d8399bce"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.91",
 ]
 
 [[package]]
@@ -991,8 +1024,6 @@ version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31a0499c1dc64f458ad13872de75c0eb7e3fdb0e67964610c914b034fc5956e"
 dependencies = [
- "jobserver",
- "libc",
  "shlex",
 ]
 
@@ -1157,16 +1188,6 @@ checksum = "773f3b9af64447d2ce9850330c473515014aa235e6a783b02db81ff39e4a3dad"
 dependencies = [
  "crypto-common",
  "inout",
-]
-
-[[package]]
-name = "clang"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84c044c781163c001b913cd018fc95a628c50d0d2dfea8bca77dad71edb16e37"
-dependencies = [
- "clang-sys",
- "libc",
 ]
 
 [[package]]
@@ -2349,6 +2370,7 @@ dependencies = [
  "argon2",
  "async-trait",
  "axum 0.7.9",
+ "axum-extra",
  "chrono",
  "gb-core",
  "headers",
@@ -2401,11 +2423,13 @@ name = "gb-core"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "axum 0.7.9",
  "chrono",
  "mockall",
  "redis",
  "rstest",
  "serde",
+ "serde_json",
  "sqlx",
  "thiserror",
  "tokio",
@@ -2423,7 +2447,7 @@ dependencies = [
  "gb-core",
  "image",
  "imageproc",
- "opencv",
+ "reqwest 0.11.27",
  "rstest",
  "rusttype",
  "serde",
@@ -3606,15 +3630,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
-name = "jobserver"
-version = "0.1.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48d1dbcbbeb6a7fec7e059840aa538bd62aaccf972c7346c4d9d2059312853d0"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "jpeg-decoder"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4414,39 +4429,6 @@ name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
-
-[[package]]
-name = "opencv"
-version = "0.82.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79290f5f138b26637cae0ae243d77de871a096e334d3fca22f5ddf31ab6f4cc5"
-dependencies = [
- "cc",
- "dunce",
- "jobserver",
- "libc",
- "num-traits",
- "once_cell",
- "opencv-binding-generator",
- "pkg-config",
- "semver",
- "shlex",
- "vcpkg",
-]
-
-[[package]]
-name = "opencv-binding-generator"
-version = "0.66.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be5f640bda28b478629f525e8525601586a2a2b9403a4b8f2264fa5fcfebe6be"
-dependencies = [
- "clang",
- "clang-sys",
- "dunce",
- "once_cell",
- "percent-encoding",
- "regex",
-]
 
 [[package]]
 name = "openid"
@@ -6855,9 +6837,9 @@ checksum = "8f50febec83f5ee1df3015341d8bd429f2d1cc62bcba7ea2076759d315084683"
 
 [[package]]
 name = "tesseract"
-version = "0.13.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50ddd63873a3dfc9966138457d320ff327414597e253bc4954dff519dce41b8a"
+checksum = "b419c2568ceb602121d4ea2495e4b214ac7f32d5009b74b1ce67765a89c4da54"
 dependencies = [
  "tesseract-plumbing",
  "tesseract-sys",
@@ -6866,9 +6848,9 @@ dependencies = [
 
 [[package]]
 name = "tesseract-plumbing"
-version = "0.9.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fd126488bfd02aed61285b6255e010c330d3ca3908d0fa80cb48edcab180c7c"
+checksum = "a25fbbb95169954a9262a565fbfb001c4d9dad271d48142e6632a3e2b7314b35"
 dependencies = [
  "leptonica-plumbing",
  "tesseract-sys",
@@ -7458,7 +7440,6 @@ dependencies = [
  "sharded-slab",
  "smallvec",
  "thread_local",
- "time",
  "tracing",
  "tracing-core",
  "tracing-log",

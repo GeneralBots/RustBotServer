@@ -24,7 +24,7 @@ impl WebAutomation {
 
         let (browser, mut handler) = Browser::launch(config)
             .await
-            .map_err(|e| Error::Internal(format!("Failed to launch browser: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to launch browser: {}", e)))?;
 
         tokio::spawn(async move {
             while let Some(h) = handler.next().await {
@@ -44,7 +44,7 @@ impl WebAutomation {
     pub async fn new_page(&self) -> Result<Page> {
         let page = self.browser.new_page()
             .await
-            .map_err(|e| Error::Internal(format!("Failed to create page: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to create page: {}", e)))?;
 
         let mut pages = self.pages.lock().await;
         pages.push(page.clone());
@@ -56,11 +56,11 @@ impl WebAutomation {
     pub async fn navigate(&self, page: &Page, url: &str) -> Result<()> {
         page.goto(url)
             .await
-            .map_err(|e| Error::Internal(format!("Failed to navigate: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to navigate: {}", e)))?;
 
         page.wait_for_navigation()
             .await
-            .map_err(|e| Error::Internal(format!("Failed to wait for navigation: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to wait for navigation: {}", e)))?;
 
         Ok(())
     }
@@ -69,7 +69,7 @@ impl WebAutomation {
     pub async fn get_element(&self, page: &Page, selector: &str) -> Result<Element> {
         let element = page.find_element(selector)
             .await
-            .map_err(|e| Error::Internal(format!("Failed to find element: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to find element: {}", e)))?;
 
         Ok(Element { inner: element })
     }
@@ -78,7 +78,7 @@ impl WebAutomation {
     pub async fn click(&self, element: &Element) -> Result<()> {
         element.inner.click()
             .await
-            .map_err(|e| Error::Internal(format!("Failed to click: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to click: {}", e)))?;
 
         Ok(())
     }
@@ -87,7 +87,7 @@ impl WebAutomation {
     pub async fn type_text(&self, element: &Element, text: &str) -> Result<()> {
         element.inner.type_str(text)
             .await
-            .map_err(|e| Error::Internal(format!("Failed to type text: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to type text: {}", e)))?;
 
         Ok(())
     }
@@ -96,7 +96,7 @@ impl WebAutomation {
     pub async fn screenshot(&self, page: &Page, path: &str) -> Result<Vec<u8>> {
         let screenshot = page.screenshot(ScreenshotFormat::PNG, None, true)
             .await
-            .map_err(|e| Error::Internal(format!("Failed to take screenshot: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to take screenshot: {}", e)))?;
 
         Ok(screenshot)
     }
@@ -105,7 +105,7 @@ impl WebAutomation {
     pub async fn wait_for_selector(&self, page: &Page, selector: &str) -> Result<()> {
         page.wait_for_element(selector)
             .await
-            .map_err(|e| Error::Internal(format!("Failed to wait for selector: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to wait for selector: {}", e)))?;
 
         Ok(())
     }
@@ -127,7 +127,7 @@ impl WebAutomation {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
 
-        Err(Error::Internal("Network did not become idle".to_string()))
+        Err(Error::internal("Network did not become idle".to_string()))
     }
 }
 
@@ -153,7 +153,7 @@ mod tests {
         
         let title = page.title()
             .await
-            .map_err(|e| Error::Internal(format!("Failed to get title: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to get title: {}", e)))?;
             
         assert!(title.contains("Example"));
         Ok(())

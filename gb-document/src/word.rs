@@ -9,7 +9,7 @@ impl WordProcessor {
     #[instrument(skip(data))]
     pub fn extract_text(data: &[u8]) -> Result<String> {
         let doc = Docx::from_reader(Cursor::new(data))
-            .map_err(|e| Error::Internal(format!("Failed to read DOCX: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to read DOCX: {}", e)))?;
 
         let mut text = String::new();
         for para in doc.document.paragraphs() {
@@ -40,7 +40,7 @@ impl WordProcessor {
         let mut output = Vec::new();
         docx.build()
             .pack(&mut Cursor::new(&mut output))
-            .map_err(|e| Error::Internal(format!("Failed to create DOCX: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to create DOCX: {}", e)))?;
 
         Ok(output)
     }
@@ -48,7 +48,7 @@ impl WordProcessor {
     #[instrument(skip(template_data, variables))]
     pub fn fill_template(template_data: &[u8], variables: &serde_json::Value) -> Result<Vec<u8>> {
         let doc = Docx::from_reader(Cursor::new(template_data))
-            .map_err(|e| Error::Internal(format!("Failed to read template: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to read template: {}", e)))?;
 
         let mut new_doc = doc.clone();
         
@@ -68,7 +68,7 @@ impl WordProcessor {
         let mut output = Vec::new();
         new_doc.build()
             .pack(&mut Cursor::new(&mut output))
-            .map_err(|e| Error::Internal(format!("Failed to save filled template: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Failed to save filled template: {}", e)))?;
 
         Ok(output)
     }

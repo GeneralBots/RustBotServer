@@ -32,7 +32,7 @@ impl FileTypeDetector {
         } else if data.starts_with(b"RIFF") && data[8..12] == *b"WEBP" {
             Ok(FileType::WebP)
         } else {
-            Err(Error::Internal("Unknown file type".to_string()))
+            Err(Error::internal("Unknown file type".to_string()))
         }
     }
 
