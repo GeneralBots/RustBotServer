@@ -1,99 +1,76 @@
-use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use serde::{Map, Value as JsonValue};
+use std::future::Future;
 use uuid::Uuid;
-use crate::{models::*, Result};
+use crate::errors::Result;
+use crate::models::{
+    Customer, Instance, Room, Track, User, Message, Connection,
+    TrackInfo, Subscription, Participant, RoomStats, MessageId,
+    MessageFilter, Status, SearchQuery, FileUpload, FileInfo,
+    FileContent, RoomConfig
+};
 
-#[async_trait]
 pub trait CustomerRepository: Send + Sync {
-    async fn create(&self, customer: &Customer) -> Result<Customer>;
-    async fn get(&self, id: Uuid) -> Result<Customer>;
-    async fn update(&self, customer: &Customer) -> Result<Customer>;
-    async fn delete(&self, id: Uuid) -> Result<()>;
+    fn create(&self, customer: &Customer) -> impl Future<Output = Result<Customer>> + Send;
+    fn get(&self, id: Uuid) -> impl Future<Output = Result<Customer>> + Send;
+    fn update(&self, customer: &Customer) -> impl Future<Output = Result<Customer>> + Send;
+    fn delete(&self, id: Uuid) -> impl Future<Output = Result<()>> + Send;
 }
 
-#[async_trait]
 pub trait InstanceRepository: Send + Sync {
-    async fn create(&self, instance: &Instance) -> Result<Instance>;
-    async fn get(&self, id: Uuid) -> Result<Instance>;
-    async fn get_by_customer(&self, customer_id: Uuid) -> Result<Vec<Instance>>;
-    async fn update(&self, instance: &Instance) -> Result<Instance>;
-    async fn delete(&self, id: Uuid) -> Result<()>;
-    async fn get_by_shard(&self, shard_id: i32) -> Result<Vec<Instance>>;
+    fn create(&self, instance: &Instance) -> impl Future<Output = Result<Instance>> + Send;
+    fn get(&self, id: Uuid) -> impl Future<Output = Result<Instance>> + Send;
+    fn get_by_customer(&self, customer_id: Uuid) -> impl Future<Output = Result<Vec<Instance>>> + Send;
+    fn update(&self, instance: &Instance) -> impl Future<Output = Result<Instance>> + Send;
+    fn delete(&self, id: Uuid) -> impl Future<Output = Result<()>> + Send;
+    fn get_by_shard(&self, shard_id: i32) -> impl Future<Output = Result<Vec<Instance>>> + Send;
 }
 
-#[async_trait]
 pub trait RoomRepository: Send + Sync {
-    async fn create(&self, room: &Room) -> Result<Room>;
-    async fn get(&self, id: Uuid) -> Result<Room>;
-    async fn get_by_instance(&self, instance_id: Uuid) -> Result<Vec<Room>>;
-    async fn update(&self, room: &Room) -> Result<Room>;
-    async fn delete(&self, id: Uuid) -> Result<()>;
-    async fn get_active_rooms(&self, instance_id: Uuid) -> Result<Vec<Room>>;
+    fn create(&self, room: &Room) -> impl Future<Output = Result<Room>> + Send;
+    fn get(&self, id: Uuid) -> impl Future<Output = Result<Room>> + Send;
+    fn get_by_instance(&self, instance_id: Uuid) -> impl Future<Output = Result<Vec<Room>>> + Send;
+    fn update(&self, room: &Room) -> impl Future<Output = Result<Room>> + Send;
+    fn delete(&self, id: Uuid) -> impl Future<Output = Result<()>> + Send;
+    fn get_active_rooms(&self, instance_id: Uuid) -> impl Future<Output = Result<Vec<Room>>> + Send;
 }
 
-#[async_trait]
-pub trait MessageRepository: Send + Sync {
-    async fn create(&self, message: &Message) -> Result<Message>;
-    async fn get(&self, id: Uuid) -> Result<Message>;
-    async fn get_by_conversation(&self, conversation_id: Uuid) -> Result<Vec<Message>>;
-    async fn update_status(&self, id: Uuid, status: String) -> Result<()>;
-    async fn delete(&self, id: Uuid) -> Result<()>;
-    async fn get_by_shard(&self, shard_key: i32) -> Result<Vec<Message>>;
-}
-
-#[async_trait]
 pub trait TrackRepository: Send + Sync {
-    async fn create(&self, track: &Track) -> Result<Track>;
-    async fn get(&self, id: Uuid) -> Result<Track>;
-    async fn get_by_room(&self, room_id: Uuid) -> Result<Vec<Track>>;
-    async fn update(&self, track: &Track) -> Result<Track>;
-    async fn delete(&self, id: Uuid) -> Result<()>;
+    fn create(&self, track: &Track) -> impl Future<Output = Result<Track>> + Send;
+    fn get(&self, id: Uuid) -> impl Future<Output = Result<Track>> + Send;
+    fn get_by_room(&self, room_id: Uuid) -> impl Future<Output = Result<Vec<Track>>> + Send;
+    fn update(&self, track: &Track) -> impl Future<Output = Result<Track>> + Send;
+    fn delete(&self, id: Uuid) -> impl Future<Output = Result<()>> + Send;
 }
 
-#[async_trait]
 pub trait UserRepository: Send + Sync {
-    async fn create(&self, user: &User) -> Result<User>;
-    async fn get(&self, id: Uuid) -> Result<User>;
-    async fn get_by_email(&self, email: &str) -> Result<User>;
-    async fn get_by_instance(&self, instance_id: Uuid) -> Result<Vec<User>>;
-    async fn update(&self, user: &User) -> Result<User>;
-    async fn delete(&self, id: Uuid) -> Result<()>;
+    fn create(&self, user: &User) -> impl Future<Output = Result<User>> + Send;
+    fn get(&self, id: Uuid) -> impl Future<Output = Result<User>> + Send;
+    fn get_by_email(&self, email: &str) -> impl Future<Output = Result<User>> + Send;
+    fn get_by_instance(&self, instance_id: Uuid) -> impl Future<Output = Result<Vec<User>>> + Send;
+    fn update(&self, user: &User) -> impl Future<Output = Result<User>> + Send;
+    fn delete(&self, id: Uuid) -> impl Future<Output = Result<()>> + Send;
 }
 
-#[async_trait]
 pub trait RoomService: Send + Sync {
-    async fn create_room(&self, config: RoomConfig) -> Result<Room>;
-    async fn join_room(&self, room_id: Uuid, user_id: Uuid) -> Result<Connection>;
-    async fn leave_room(&self, room_id: Uuid, user_id: Uuid) -> Result<()>;
-    async fn publish_track(&self, track: TrackInfo) -> Result<Track>;
-    async fn subscribe_track(&self, track_id: Uuid) -> Result<Subscription>;
-    async fn get_participants(&self, room_id: Uuid) -> Result<Vec<Participant>>;
-    async fn get_room_stats(&self, room_id: Uuid) -> Result<RoomStats>;
+    fn create_room(&self, config: RoomConfig) -> impl Future<Output = Result<Room>> + Send;
+    fn join_room(&self, room_id: Uuid, user_id: Uuid) -> impl Future<Output = Result<Connection>> + Send;
+    fn leave_room(&self, room_id: Uuid, user_id: Uuid) -> impl Future<Output = Result<()>> + Send;
+    fn publish_track(&self, track: TrackInfo) -> impl Future<Output = Result<Track>> + Send;
+    fn subscribe_track(&self, track_id: Uuid) -> impl Future<Output = Result<Subscription>> + Send;
+    fn get_participants(&self, room_id: Uuid) -> impl Future<Output = Result<Vec<Participant>>> + Send;
+    fn get_room_stats(&self, room_id: Uuid) -> impl Future<Output = Result<RoomStats>> + Send;
 }
 
-#[async_trait]
 pub trait MessageService: Send + Sync {
-    async fn send_message(&self, message: Message) -> Result<MessageId>;
-    async fn get_messages(&self, filter: MessageFilter) -> Result<Vec<Message>>;
-    async fn update_status(&self, message_id: Uuid, status: Status) -> Result<()>;
-    async fn delete_messages(&self, filter: MessageFilter) -> Result<()>;
-    async fn search_messages(&self, query: SearchQuery) -> Result<Vec<Message>>;
+    fn send_message(&self, message: Message) -> impl Future<Output = Result<MessageId>> + Send;
+    fn get_messages(&self, filter: MessageFilter) -> impl Future<Output = Result<Vec<Message>>> + Send;
+    fn update_status(&self, message_id: Uuid, status: Status) -> impl Future<Output = Result<()>> + Send;
+    fn delete_messages(&self, filter: MessageFilter) -> impl Future<Output = Result<()>> + Send;
+    fn search_messages(&self, query: SearchQuery) -> impl Future<Output = Result<Vec<Message>>> + Send;
 }
 
-#[async_trait]
-pub trait StorageService: Send + Sync {
-    async fn save_file(&self, file: FileUpload) -> Result<FileInfo>;
-    async fn get_file(&self, file_id: Uuid) -> Result<FileContent>;
-    async fn delete_file(&self, file_id: Uuid) -> Result<()>;
-    async fn list_files(&self, prefix: &str) -> Result<Vec<FileInfo>>;
-}
-
-#[async_trait]
-pub trait MetricsService: Send + Sync {
-    async fn record_metric(&self, metric: Metric) -> Result<()>;
-    async fn get_metrics(&self, query: MetricsQuery) -> Result<Vec<MetricValue>>;
-    async fn create_dashboard(&self, config: DashboardConfig) -> Result<Dashboard>;
-    async fn get_dashboard(&self, id: Uuid) -> Result<Dashboard>;
+pub trait FileService: Send + Sync {
+    fn save_file(&self, file: FileUpload) -> impl Future<Output = Result<FileInfo>> + Send;
+    fn get_file(&self, file_id: Uuid) -> impl Future<Output = Result<FileContent>> + Send;
+    fn delete_file(&self, file_id: Uuid) -> impl Future<Output = Result<()>> + Send;
+    fn list_files(&self, prefix: &str) -> impl Future<Output = Result<Vec<FileInfo>>> + Send;
 }

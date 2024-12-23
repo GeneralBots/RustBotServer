@@ -1,14 +1,16 @@
+use std::sync::Arc;
+use sqlx::PgPool;
+use argon2::{
+    password_hash::{PasswordHash, PasswordHasher, SaltString},
+    Argon2,
+};
+use rand::rngs::OsRng;
+
 use crate::{
     models::{LoginRequest, LoginResponse, User},
-    Result, AuthError,
+    AuthError,
+    Result,
 };
-use argon2::{
-    password_hash::{rand_core::OsRng, SaltString},
-    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
-};
-use jsonwebtoken::{encode, EncodingKey, Header};
-use sqlx::PgPool;
-use std::sync::Arc;
 
 pub struct AuthService {
     db: Arc<PgPool>,

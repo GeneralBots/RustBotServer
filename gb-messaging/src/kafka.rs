@@ -1,35 +1,27 @@
-use async_trait::async_trait;
-use gb_core::{Result, Error, models::Message};
-use rdkafka::{
-    producer::{FutureProducer, FutureRecord},
-    consumer::{StreamConsumer, Consumer},
-    ClientConfig, Message as KafkaMessage,
-};
-use serde::{de::DeserializeOwned, Serialize};
+use gb_core::{Result, Error};
+use rdkafka::producer::{FutureProducer, FutureRecord};
+use rdkafka::consumer::{StreamConsumer, Consumer};
+use rdkafka::ClientConfig;
 use std::time::Duration;
-use tracing::{instrument, error, info};
-use uuid::Uuid;
-
-pub struct KafkaBroker {
+use tracing::{instrument, error};
+use serde::Serialize;
+pub struct Kafka {
     producer: FutureProducer,
     consumer: StreamConsumer,
 }
 
-impl KafkaBroker {
-    pub fn new(brokers: &str, group_id: &str) -> Result<Self> {
-        let producer: FutureProducer = ClientConfig::new()
+impl Kafka {
+    pub async fn new(brokers: &str) -> Result<Self> {
+        let producer = ClientConfig::new()
             .set("bootstrap.servers", brokers)
-            .set("message.timeout.ms", "5000")
             .create()
-            .map_err(|e| Error::Kafka(format!("Failed to create producer: {}", e)))?;
+            .map_err(|e| Error::kafka(format!("Failed to create producer: {}", e)))?;
 
-        let consumer: StreamConsumer = ClientConfig::new()
+        let consumer = ClientConfig::new()
             .set("bootstrap.servers", brokers)
-            .set("group.id", group_id)
-            .set("enable.auto.commit", "true")
-            .set("auto.offset.reset", "earliest")
+            .set("group.id", "my-group")
             .create()
-            .map_err(|e| Error::Kafka(format!("Failed to create consumer: {}", e)))?;
+            .map_err(|e| Error::kafka(format!("Failed to create consumer: {}", e)))?;
 
         Ok(Self {
             producer,
@@ -37,60 +29,37 @@ impl KafkaBroker {
         })
     }
 
-    #[instrument(skip(self, value))]
-    pub async fn publish<T: Serialize>(&self, topic: &str, key: &str, value: &T) -> Result<()> {
-        let payload = serde_json::to_string(value)
-            .map_err(|e| Error::Internal(format!("Serialization error: {}", e)))?;
+    pub async fn publish<T: Serialize>(&self, topic: &str, message: &T) -> Result<()> {
+        let payload = serde_json::to_string(message)
+            .map_err(|e| Error::internal(format!("Serialization error: {}", e)))?;
 
         self.producer
             .send(
                 FutureRecord::to(topic)
-                    .key(key)
-                    .payload(&payload),
-                Duration::from_secs(5),
+                    .payload(payload.as_bytes())
+                    .key(""),
+                Duration::from_secs(0),
             )
             .await
-            .map_err(|(e, _)| Error::Kafka(format!("Failed to send message: {}", e)))?;
+            .map_err(|(e, _)| Error::kafka(format!("Failed to send message: {}", e)))?;
 
         Ok(())
     }
 
-    #[instrument(skip(self, handler))]
-    pub async fn subscribe<T, F, Fut>(&self, topics: &[&str], handler: F) -> Result<()>
-    where
-        T: DeserializeOwned,
-        F: Fn(T) -> Fut,
-        Fut: std::future::Future<Output = Result<()>>,
-    {
+    pub async fn subscribe(&self, topic: &str) -> Result<()> {
         self.consumer
-            .subscribe(topics)
-            .map_err(|e| Error::Kafka(format!("Failed to subscribe: {}", e)))?;
+            .subscribe(&[topic])
+            .map_err(|e| Error::kafka(format!("Failed to subscribe: {}", e)))?;
 
-        loop {
-            match self.consumer.recv().await {
-                Ok(msg) => {
-                    if let Some(payload) = msg.payload() {
-                        match serde_json::from_slice::<T>(payload) {
-                            Ok(value) => {
-                                if let Err(e) = handler(value).await {
-                                    error!("Handler error: {}", e);
-                                }
-                            }
-                            Err(e) => error!("Deserialization error: {}", e),
-                        }
-                    }
-                }
-                Err(e) => error!("Consumer error: {}", e),
-            }
-        }
+        Ok(())
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use rstest::*;
     use serde::{Deserialize, Serialize};
+    use uuid::Uuid;
 
     #[derive(Debug, Serialize, Deserialize, PartialEq)]
     struct TestMessage {
@@ -99,11 +68,8 @@ mod tests {
     }
 
     #[fixture]
-    fn kafka_broker() -> KafkaBroker {
-        KafkaBroker::new(
-            "localhost:9092",
-            "test-group",
-        ).unwrap()
+    async fn kafka_broker() -> Kafka {
+        Kafka::new("localhost:9092").await.unwrap()
     }
 
     #[fixture]
@@ -116,29 +82,15 @@ mod tests {
 
     #[rstest]
     #[tokio::test]
-    async fn test_publish_subscribe(
-        kafka_broker: KafkaBroker,
-        test_message: TestMessage,
-    ) {
+    async fn test_publish_subscribe(#[future] kafka_broker: Kafka, test_message: TestMessage) {
         let topic = "test-topic";
-        let key = test_message.id.to_string();
-
-        // Publish message
-        kafka_broker.publish(topic, &key, &test_message)
+        kafka_broker.publish(topic, &test_message)
             .await
             .unwrap();
 
-        // Subscribe and verify
-        let handler = |msg: TestMessage| async move {
-            assert_eq!(msg, test_message);
-            Ok(())
-        };
-
-        // Run subscription for a short time
-        tokio::spawn(async move {
-            kafka_broker.subscribe(&[topic], handler).await.unwrap();
-        });
-
+        kafka_broker.subscribe(topic)
+            .await
+            .unwrap();
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }

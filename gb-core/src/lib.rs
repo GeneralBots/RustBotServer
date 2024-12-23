@@ -1,8 +1,10 @@
+pub mod errors;
 pub mod models;
 pub mod traits;
-pub mod errors;
 
-pub use errors::{Error, Result};
+pub use errors::{Error, ErrorKind, Result};
+
+
 pub use models::*;
 pub use traits::*;
 

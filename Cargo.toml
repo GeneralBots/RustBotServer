@@ -1,4 +1,5 @@
 [workspace]
+resolver="2"
 members = [
     "gb-core",           # Core domain models and traits
     "gb-api",            # API layer and server implementation
@@ -12,7 +13,6 @@ members = [
     #"gb-cloud",          # Cloud provider integrations
     #"gb-vm",            # Virtual machine and BASIC compiler
     "gb-automation",     # Web and process automation
-    "gb-nlp",           # Natural language processing
     "gb-image",         # Image processing capabilities
 ]
 
@@ -72,7 +72,7 @@ azure_identity = "0.15"
 google-cloud-storage = "0.16"
 
 # Monitoring and metrics
-prometheus = "0.13"
+prometheus = "0.13.0"
 opentelemetry = { version = "0.20", features = ["rt-tokio"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -6,6 +6,7 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+tokio-tungstenite = "0.18"
 async-trait.workspace = true
 serde.workspace = true
 uuid.workspace = true

@@ -1,10 +1,11 @@
-pub mod metrics;
-pub mod logging;
-pub mod telemetry;
+mod logging;
+mod metrics;
+mod telemetry;
 
-pub use metrics::Metrics;
 pub use logging::init_logging;
+pub use metrics::Metrics;
 pub use telemetry::Telemetry;
+
 
 #[cfg(test)]
 mod tests {

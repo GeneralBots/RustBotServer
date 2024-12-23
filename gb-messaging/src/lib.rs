@@ -1,14 +1,14 @@
-pub mod kafka;
-pub mod redis_pubsub;
-pub mod rabbitmq;
-pub mod websocket;
-pub mod processor;
+mod kafka;
+mod rabbitmq;
+mod redis_pubsub;
+mod websocket;
+mod processor;
 
-pub use kafka::KafkaBroker;
-pub use redis_pubsub::RedisPubSub;
+pub use kafka::Kafka;
 pub use rabbitmq::RabbitMQ;
+pub use redis_pubsub::RedisPubSub;
 pub use websocket::WebSocketClient;
-pub use processor::{MessageProcessor, MessageEnvelope};
+pub use processor::MessageProcessor;
 
 #[cfg(test)]
 mod tests {
@@ -26,7 +26,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_messaging_integration() {
-        // Initialize message brokers
         let kafka = KafkaBroker::new(
             "localhost:9092",
             "test-group",
@@ -40,37 +39,31 @@ mod tests {
             .await
             .unwrap();
 
-        let websocket = WebSocketClient::connect("ws://localhost:8080")
+        let mut websocket = WebSocketClient::connect("ws://localhost:8080")
             .await
             .unwrap();
 
-        // Create test message
         let test_message = TestMessage {
             id: Uuid::new_v4(),
             content: "integration test".to_string(),
         };
 
-        // Test Kafka
         kafka.publish("test-topic", &test_message.id.to_string(), &test_message)
             .await
             .unwrap();
 
-        // Test Redis PubSub
         redis.publish("test-channel", &test_message)
             .await
             .unwrap();
 
-        // Test RabbitMQ
         rabbitmq.publish("", "test.key", &test_message)
             .await
             .unwrap();
 
-        // Test WebSocket
-        websocket.send(&test_message)
+        websocket.send_message(serde_json::to_string(&test_message).unwrap())
             .await
             .unwrap();
 
-        // Test Message Processor
         let mut processor = MessageProcessor::new(100);
         
         processor.register_handler("test", |envelope| {

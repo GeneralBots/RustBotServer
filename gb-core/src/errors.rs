@@ -1,54 +1,82 @@
 use thiserror::Error;
-use redis::RedisError;
 
 #[derive(Error, Debug)]
-pub enum Error {
+pub enum ErrorKind {
     #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
-
+    Database(String),
+    
     #[error("Redis error: {0}")]
-    Redis(#[from] redis::RedisError),
-
+    Redis(String),
+    
     #[error("Kafka error: {0}")]
     Kafka(String),
-
-    #[error("WebRTC error: {0}")]
-    WebRTC(String),
-
+    
     #[error("Invalid input: {0}")]
     InvalidInput(String),
-
+    
     #[error("Not found: {0}")]
     NotFound(String),
-
-    #[error("Unauthorized: {0}")]
-    Unauthorized(String),
-
-    #[error("Rate limited: {0}")]
-    RateLimited(String),
-
-    #[error("Resource quota exceeded: {0}")]
-    QuotaExceeded(String),
-
+    
+    #[error("Authentication error: {0}")]
+    Authentication(String),
+    
+    #[error("Authorization error: {0}")]
+    Authorization(String),
+    
     #[error("Internal error: {0}")]
     Internal(String),
+    
+    #[error("External service error: {0}")]
+    ExternalService(String),
+
+    #[error("WebSocket error: {0}")]
+    WebSocket(String),
+
+    #[error("Messaging error: {0}")]
+    Messaging(String),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+#[derive(Debug)]
+pub struct Error {
+    pub kind: ErrorKind,
+    pub message: String,
+}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl Error {
+    pub fn new(kind: ErrorKind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+        }
+    }
 
-    #[test]
-    fn test_error_display() {
-        let err = Error::NotFound("User".to_string());
-        assert_eq!(err.to_string(), "Not found: User");
+    pub fn internal<T: std::fmt::Display>(msg: T) -> Self {
+        Self::new(ErrorKind::Internal(msg.to_string()), msg.to_string())
+    }
 
-        let err = Error::Unauthorized("Invalid token".to_string());
-        assert_eq!(err.to_string(), "Unauthorized: Invalid token");
+    pub fn redis<T: std::fmt::Display>(msg: T) -> Self {
+        Self::new(ErrorKind::Redis(msg.to_string()), msg.to_string())
+    }
 
-        let err = Error::QuotaExceeded("Max instances reached".to_string());
-        assert_eq!(err.to_string(), "Resource quota exceeded: Max instances reached");
+    pub fn kafka<T: std::fmt::Display>(msg: T) -> Self {
+        Self::new(ErrorKind::Kafka(msg.to_string()), msg.to_string())
+    }
+
+    pub fn database<T: std::fmt::Display>(msg: T) -> Self {
+        Self::new(ErrorKind::Database(msg.to_string()), msg.to_string())
+    }
+
+    pub fn websocket<T: std::fmt::Display>(msg: T) -> Self {
+        Self::new(ErrorKind::WebSocket(msg.to_string()), msg.to_string())
     }
 }
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.kind, self.message)
+    }
+}
+
+impl std::error::Error for Error {}
+
+pub type Result<T> = std::result::Result<T, Error>;

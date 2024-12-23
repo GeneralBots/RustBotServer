@@ -1,20 +1,29 @@
-use async_trait::async_trait;
 use gb_core::{Result, Error};
 use lapin::{
     options::*,
     types::FieldTable,
     Connection, ConnectionProperties,
-    Channel, Consumer,
-    message::Delivery,
+    Channel,
+    BasicProperties,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{instrument, error};
+use futures::StreamExt;
 
 pub struct RabbitMQ {
-    connection: Connection,
+    connection: Arc<Connection>,
     channel: Arc<Mutex<Channel>>,
+}
+
+impl Clone for RabbitMQ {
+    fn clone(&self) -> Self {
+        Self {
+            connection: self.connection.clone(),
+            channel: self.channel.clone(),
+        }
+    }
 }
 
 impl RabbitMQ {
@@ -24,14 +33,14 @@ impl RabbitMQ {
             ConnectionProperties::default(),
         )
         .await
-        .map_err(|e| Error::Internal(format!("RabbitMQ connection error: {}", e)))?;
+        .map_err(|e| Error::internal(format!("RabbitMQ connection error: {}", e)))?;
 
         let channel = connection.create_channel()
             .await
-            .map_err(|e| Error::Internal(format!("RabbitMQ channel error: {}", e)))?;
+            .map_err(|e| Error::internal(format!("RabbitMQ channel error: {}", e)))?;
 
         Ok(Self {
-            connection,
+            connection: Arc::new(connection),
             channel: Arc::new(Mutex::new(channel)),
         })
     }
@@ -44,7 +53,7 @@ impl RabbitMQ {
         message: &T,
     ) -> Result<()> {
         let payload = serde_json::to_string(message)
-            .map_err(|e| Error::Internal(format!("Serialization error: {}", e)))?;
+            .map_err(|e| Error::internal(format!("Serialization error: {}", e)))?;
 
         let channel = self.channel.lock().await;
         
@@ -56,7 +65,7 @@ impl RabbitMQ {
             BasicProperties::default(),
         )
         .await
-        .map_err(|e| Error::Internal(format!("RabbitMQ publish error: {}", e)))?;
+        .map_err(|e| Error::internal(format!("RabbitMQ publish error: {}", e)))?;
 
         Ok(())
     }
@@ -80,7 +89,7 @@ impl RabbitMQ {
             FieldTable::default(),
         )
         .await
-        .map_err(|e| Error::Internal(format!("RabbitMQ queue declare error: {}", e)))?;
+        .map_err(|e| Error::internal(format!("RabbitMQ queue declare error: {}", e)))?;
 
         let mut consumer = channel.basic_consume(
             queue,
@@ -89,7 +98,7 @@ impl RabbitMQ {
             FieldTable::default(),
         )
         .await
-        .map_err(|e| Error::Internal(format!("RabbitMQ consume error: {}", e)))?;
+        .map_err(|e| Error::internal(format!("RabbitMQ consume error: {}", e)))?;
 
         while let Some(delivery) = consumer.next().await {
             match delivery {
@@ -122,8 +131,9 @@ mod tests {
     use rstest::*;
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
+    use std::time::Duration;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
     struct TestMessage {
         id: Uuid,
         content: String,
@@ -150,31 +160,29 @@ mod tests {
         rabbitmq: RabbitMQ,
         test_message: TestMessage,
     ) {
-        let queue = "test-queue";
-        let routing_key = "test.key";
-
-        // Subscribe first
+        let queue = "test_queue";
+        let routing_key = "test_routing_key";
+        
         let rabbitmq_clone = rabbitmq.clone();
         let test_message_clone = test_message.clone();
+        
         let handle = tokio::spawn(async move {
             let handler = |msg: TestMessage| async move {
                 assert_eq!(msg, test_message_clone);
                 Ok(())
             };
-
+            
             rabbitmq_clone.subscribe(queue, handler).await.unwrap();
         });
 
-        // Give subscription time to establish
         tokio::time::sleep(Duration::from_millis(100)).await;
 
-        // Publish message
         rabbitmq.publish("", routing_key, &test_message)
             .await
             .unwrap();
 
-        // Wait for handler to process
         tokio::time::sleep(Duration::from_secs(1)).await;
+        
         handle.abort();
     }
 }

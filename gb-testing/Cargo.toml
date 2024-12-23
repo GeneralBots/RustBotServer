@@ -34,7 +34,7 @@ sqlx.workspace = true
 redis.workspace = true
 
 # Metrics & Monitoring
-prometheus = { version = "0.13", features = ["process"] }
+prometheus = { version = "0.13.0", features = ["process"] }
 tracing.workspace = true
 opentelemetry.workspace = true
 

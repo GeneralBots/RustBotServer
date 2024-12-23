@@ -16,7 +16,9 @@ uuid.workspace = true
 async-trait.workspace = true
 tracing.workspace = true
 futures.workspace = true
+futures-util = "0.3"
 lapin = "2.3"
+tokio-tungstenite = { version = "0.20", features = ["native-tls"] }
 
 [dev-dependencies]
 rstest.workspace = true

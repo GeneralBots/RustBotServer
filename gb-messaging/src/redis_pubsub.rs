@@ -1,80 +1,53 @@
 use async_trait::async_trait;
+
 use gb_core::{Result, Error};
-use redis::{
-    aio::MultiplexedConnection,
-    AsyncCommands, Client,
-};
+use redis::{Client, AsyncCommands};
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use tracing::{instrument, error};
+use tracing::instrument;
 
 pub struct RedisPubSub {
-    client: Client,
-    conn: Arc<Mutex<MultiplexedConnection>>,
+    client: Arc<Client>,
+}
+
+impl Clone for RedisPubSub {
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+        }
+    }
 }
 
 impl RedisPubSub {
     pub async fn new(url: &str) -> Result<Self> {
         let client = Client::open(url)
-            .map_err(|e| Error::Redis(e))?;
+            .map_err(|e| Error::redis(e.to_string()))?;
 
-        let conn = client.get_multiplexed_async_connection()
+        // Test connection
+        client.get_async_connection()
             .await
-            .map_err(|e| Error::Redis(e))?;
+            .map_err(|e| Error::redis(e.to_string()))?;
 
         Ok(Self {
-            client,
-            conn: Arc::new(Mutex::new(conn)),
+            client: Arc::new(client),
         })
     }
 
-    #[instrument(skip(self, message))]
-    pub async fn publish<T: Serialize>(&self, channel: &str, message: &T) -> Result<()> {
-        let payload = serde_json::to_string(message)
-            .map_err(|e| Error::Internal(format!("Serialization error: {}", e)))?;
+    #[instrument(skip(self, payload))]
+    pub async fn publish<T>(&self, channel: &str, payload: &T) -> Result<()>
+    where
+        T: Serialize + std::fmt::Debug,
+    {
+        let mut conn = self.client.get_async_connection()
+            .await
+            .map_err(|e| Error::redis(e.to_string()))?;
 
-        let mut conn = self.conn.lock().await;
+        let payload = serde_json::to_string(payload)
+            .map_err(|e| Error::redis(e.to_string()))?;
+
         conn.publish(channel, payload)
             .await
-            .map_err(|e| Error::Redis(e))?;
-
-        Ok(())
-    }
-
-    #[instrument(skip(self, handler))]
-    pub async fn subscribe<T, F, Fut>(&self, channels: &[&str], handler: F) -> Result<()>
-    where
-        T: DeserializeOwned,
-        F: Fn(T) -> Fut,
-        Fut: std::future::Future<Output = Result<()>>,
-    {
-        let mut pubsub = self.client.get_async_connection()
-            .await
-            .map_err(|e| Error::Redis(e))?
-            .into_pubsub();
-
-        for channel in channels {
-            pubsub.subscribe(*channel)
-                .await
-                .map_err(|e| Error::Redis(e))?;
-        }
-
-        let mut stream = pubsub.on_message();
-
-        while let Some(msg) = stream.next().await {
-            let payload: String = msg.get_payload()
-                .map_err(|e| Error::Redis(e))?;
-
-            match serde_json::from_str::<T>(&payload) {
-                Ok(value) => {
-                    if let Err(e) = handler(value).await {
-                        error!("Handler error: {}", e);
-                    }
-                }
-                Err(e) => error!("Deserialization error: {}", e),
-            }
-        }
+            .map_err(|e| Error::redis(e.to_string()))?;
 
         Ok(())
     }
@@ -86,6 +59,7 @@ mod tests {
     use rstest::*;
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
+    use std::time::Duration;
 
     #[derive(Debug, Serialize, Deserialize, PartialEq)]
     struct TestMessage {
@@ -116,7 +90,6 @@ mod tests {
     ) {
         let channel = "test-channel";
 
-        // Subscribe first
         let pubsub_clone = redis_pubsub.clone();
         let test_message_clone = test_message.clone();
         
@@ -129,15 +102,12 @@ mod tests {
             pubsub_clone.subscribe(&[channel], handler).await.unwrap();
         });
 
-        // Give subscription time to establish
         tokio::time::sleep(Duration::from_millis(100)).await;
 
-        // Publish message
         redis_pubsub.publish(channel, &test_message)
             .await
             .unwrap();
 
-        // Wait for handler to process
         tokio::time::sleep(Duration::from_secs(1)).await;
         handle.abort();
     }

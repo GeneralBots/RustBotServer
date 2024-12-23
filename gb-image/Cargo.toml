@@ -11,7 +11,7 @@ image = { version = "0.24", features = ["webp", "jpeg", "png", "gif"] }
 imageproc = "0.23"
 rusttype = "0.9"
 tesseract = "0.13"
-opencv = { version = "0.84", features = ["clang-runtime"] }
+opencv = { version = "0.82", features = ["clang-runtime"] }
 async-trait.workspace = true
 tokio.workspace = true
 serde.workspace = true

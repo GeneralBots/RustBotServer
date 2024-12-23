@@ -1,40 +1,48 @@
 use opentelemetry::{
-    runtime::Tokio,
     sdk::{trace, Resource},
+    runtime::Tokio,
     KeyValue,
 };
-use std::time::Duration;
-use tracing::error;
+use opentelemetry_otlp::{Protocol, WithExportConfig};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum TelemetryError {
+    #[error("Failed to initialize tracer: {0}")]
+    Init(String),
+}
 
 pub struct Telemetry {
-    tracer: opentelemetry::sdk::trace::Tracer,
+    tracer: trace::Tracer,
 }
 
 impl Telemetry {
-    pub fn new(service_name: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let tracer = opentelemetry_otlp::new_pipeline()
-            .tracing()
-            .with_exporter(
-                opentelemetry_otlp::new_exporter()
-                    .tonic()
-                    .with_endpoint("http://localhost:4317")
-                    .with_timeout(Duration::from_secs(3))
-            )
-            .with_trace_config(
-                trace::config()
-                    .with_resource(Resource::new(vec![KeyValue::new(
-                        "service.name",
-                        service_name.to_string(),
-                    )]))
-                    .with_sampler(trace::Sampler::AlwaysOn)
-            )
-            .install_batch(Tokio)?;
-
+    pub async fn new(service_name: &str) -> Result<Self, TelemetryError> {
+        let tracer = Self::init_tracer(service_name)
+            .await
+            .map_err(|e| TelemetryError::Init(e.to_string()))?;
         Ok(Self { tracer })
     }
 
-    pub fn tracer(&self) -> &opentelemetry::sdk::trace::Tracer {
-        &self.tracer
+    async fn init_tracer(service_name: &str) -> Result<trace::Tracer, TelemetryError> {
+        let exporter = opentelemetry_otlp::new_exporter()
+            .tonic()
+            .with_protocol(Protocol::Grpc);
+            
+        let resource = Resource::new(vec![
+            KeyValue::new("service.name", service_name.to_string()),
+        ]);
+            
+        let config = trace::config().with_resource(resource);
+            
+        let tracer = opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(exporter)
+            .with_trace_config(config)
+            .install_batch(Tokio)
+            .map_err(|e| TelemetryError::Init(e.to_string()))?;
+
+        Ok(tracer)
     }
 }
 
@@ -48,9 +56,9 @@ impl Drop for Telemetry {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_telemetry_creation() {
-        let telemetry = Telemetry::new("test-service");
+    #[tokio::test]
+    async fn test_telemetry_creation() {
+        let telemetry = Telemetry::new("test-service").await;
         assert!(telemetry.is_ok());
     }
 }
