@@ -1,3 +1,6 @@
+use gb_core::{Result, Error};
+use crate::models::{LoginRequest, LoginResponse};
+use crate::models::user::DbUser;
 use std::sync::Arc;
 use sqlx::PgPool;
 use argon2::{
@@ -5,12 +8,6 @@ use argon2::{
     Argon2,
 };
 use rand::rngs::OsRng;
-
-use crate::{
-    models::{LoginRequest, LoginResponse, User},
-    AuthError,
-    Result,
-};
 
 pub struct AuthService {
     db: Arc<PgPool>,
@@ -30,12 +27,17 @@ impl AuthService {
     pub async fn login(&self, request: LoginRequest) -> Result<LoginResponse> {
         let user = sqlx::query_as!(
             DbUser,
-            "SELECT * FROM users WHERE email = $1",
+            r#"
+            SELECT id, email, password_hash, role
+            FROM users 
+            WHERE email = $1
+            "#,
             request.email
         )
         .fetch_optional(&*self.db)
-        .await?
-        .ok_or(AuthError::InvalidCredentials)?;
+        .await
+        .map_err(|e| Error::internal(e.to_string()))?
+        .ok_or_else(|| Error::internal("Invalid credentials"))?;
 
         self.verify_password(&request.password, &user.password_hash)?;
 
@@ -56,19 +58,19 @@ impl AuthService {
         argon2
             .hash_password(password.as_bytes(), &salt)
             .map(|hash| hash.to_string())
-            .map_err(|e| AuthError::Internal(e.to_string()))
+            .map_err(|e| Error::internal(e.to_string()))
     }
 
     fn verify_password(&self, password: &str, hash: &str) -> Result<()> {
         let parsed_hash = PasswordHash::new(hash)
-            .map_err(|e| AuthError::Internal(e.to_string()))?;
+            .map_err(|e| Error::internal(e.to_string()))?;
 
         Argon2::default()
             .verify_password(password.as_bytes(), &parsed_hash)
-            .map_err(|_| AuthError::InvalidCredentials)
+            .map_err(|_| Error::internal("Invalid credentials"))
     }
 
-    fn generate_token(&self, user: &User) -> Result<String> {
+    fn generate_token(&self, user: &DbUser) -> Result<String> {
         use jsonwebtoken::{encode, EncodingKey, Header};
         use serde::{Serialize, Deserialize};
         use chrono::{Utc, Duration};
@@ -94,6 +96,6 @@ impl AuthService {
             &claims,
             &EncodingKey::from_secret(self.jwt_secret.as_bytes()),
         )
-        .map_err(|e| AuthError::Internal(e.to_string()))
+        .map_err(|e| Error::internal(e.to_string()))
     }
 }

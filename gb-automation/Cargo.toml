@@ -9,6 +9,7 @@ license.workspace = true
 gb-core = { path = "../gb-core" }
 image = { version = "0.24", features = ["webp", "jpeg", "png", "gif"] }
 chromiumoxide = { version = "0.5", features = ["tokio-runtime"] }
+futures-util = "0.3"
 async-trait.workspace = true
 tokio.workspace = true
 serde.workspace = true

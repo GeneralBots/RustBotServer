@@ -2407,6 +2407,7 @@ dependencies = [
  "async-trait",
  "chromiumoxide",
  "fantoccini",
+ "futures-util",
  "gb-core",
  "headless_chrome",
  "image",

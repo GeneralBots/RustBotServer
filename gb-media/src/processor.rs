@@ -1,41 +1,45 @@
-use gstreamer::{self as gst, prelude::*};
-use gstreamer::prelude::{
-    ElementExt,
-    GstBinExtManual, 
-    GstObjectExt,
-};
+use gb_core::{Result, Error};
+use gstreamer as gst;
+use gstreamer::prelude::*;
+use std::path::PathBuf;
+use tracing::{error, instrument};
+
+pub struct MediaProcessor {
+    pipeline: gst::Pipeline,
+}
 
 impl MediaProcessor {
     pub fn new() -> Result<Self> {
         gst::init().map_err(|e| Error::internal(format!("Failed to initialize GStreamer: {}", e)))?;
-        
-        let pipeline = gst::Pipeline::new(None);
-        
-        Ok(Self {
-            pipeline,
-        })
+
+        let pipeline = gst::Pipeline::new()
+            .map_err(|e| Error::internal(format!("Failed to create pipeline: {}", e)))?;
+
+        Ok(Self { pipeline })
     }
-    
+
     fn setup_pipeline(&mut self) -> Result<()> {
         self.pipeline.set_state(gst::State::Playing)
             .map_err(|e| Error::internal(format!("Failed to start pipeline: {}", e)))?;
 
-        let bus = self.pipeline.bus().expect("Pipeline without bus");
-        
-        for msg in bus.iter_timed(gst::ClockTime::NONE) {
-            use gst::MessageView;
+        Ok(())
+    }
 
+    fn process_messages(&self) -> Result<()> {
+        let bus = self.pipeline.bus().unwrap();
+        
+        while let Some(msg) = bus.timed_pop(gst::ClockTime::from_seconds(1)) {
             match msg.view() {
-                MessageView::Error(err) => {
+                gst::MessageView::Error(err) => {
                     error!("Error from {:?}: {} ({:?})", 
                         err.src().map(|s| s.path_string()),
-                        err.error(), 
+                        err.error(),
                         err.debug()
                     );
                     return Err(Error::internal(format!("Pipeline error: {}", err.error())));
                 }
-                MessageView::Eos(_) => break,
-                _ => (),
+                gst::MessageView::Eos(_) => break,
+                _ => ()
             }
         }
 
@@ -47,85 +51,32 @@ impl MediaProcessor {
 
     #[instrument(skip(self, input_path, output_path))]
     pub async fn transcode(
-        &self,
+        &mut self,
         input_path: PathBuf,
         output_path: PathBuf,
-        format: &str,
+        format: &str
     ) -> Result<()> {
-        let src = gst::ElementFactory::make("filesrc")
-            .property("location", input_path.to_str().unwrap())
-            .build()
+        let source = gst::ElementFactory::make("filesrc")
             .map_err(|e| Error::internal(format!("Failed to create source element: {}", e)))?;
+        source.set_property("location", input_path.to_str().unwrap());
 
         let sink = gst::ElementFactory::make("filesink")
-            .property("location", output_path.to_str().unwrap())
-            .build()
             .map_err(|e| Error::internal(format!("Failed to create sink element: {}", e)))?;
+        sink.set_property("location", output_path.to_str().unwrap());
 
-        let decoder = match format {
-            "h264" => gst::ElementFactory::make("h264parse").build(),
-            "opus" => gst::ElementFactory::make("opusparse").build(), 
-            _ => return Err(Error::InvalidInput(format!("Unsupported format: {}", format))),
+        let decoder = match format.to_lowercase().as_str() {
+            "mp4" => gst::ElementFactory::make("qtdemux"),
+            "webm" => gst::ElementFactory::make("matroskademux"),
+            _ => return Err(Error::internal(format!("Unsupported format: {}", format)))
         }.map_err(|e| Error::internal(format!("Failed to create decoder: {}", e)))?;
 
-        self.pipeline.add_many(&[&src, &decoder, &sink])
+        self.pipeline.add_many(&[&source, &decoder, &sink])
             .map_err(|e| Error::internal(format!("Failed to add elements: {}", e)))?;
 
-        gst::Element::link_many(&[&src, &decoder, &sink])
+        gst::Element::link_many(&[&source, &decoder, &sink])
             .map_err(|e| Error::internal(format!("Failed to link elements: {}", e)))?;
 
         self.setup_pipeline()?;
-
-        Ok(())
-    }
-
-    #[instrument(skip(self, input_path))]
-    pub async fn extract_metadata(&self, input_path: PathBuf) -> Result<MediaMetadata> {
-        let src = gst::ElementFactory::make("filesrc")
-            .property("location", input_path.to_str().unwrap())
-            .build()
-            .map_err(|e| Error::internal(format!("Failed to create source element: {}", e)))?;
-
-        let decodebin = gst::ElementFactory::make("decodebin").build()
-            .map_err(|e| Error::internal(format!("Failed to create decodebin: {}", e)))?;
-
-        self.pipeline.add_many(&[&src, &decodebin])
-            .map_err(|e| Error::internal(format!("Failed to add elements: {}", e)))?;
-
-        gst::Element::link_many(&[&src, &decodebin])
-            .map_err(|e| Error::internal(format!("Failed to link elements: {}", e)))?;
-
-        let mut metadata = MediaMetadata::default();
-
-        decodebin.connect_pad_added(move |_, pad| {
-            let caps = pad.current_caps().unwrap();
-            let structure = caps.structure(0).unwrap();
-            
-            match structure.name() {
-                "video/x-raw" => {
-                    if let Ok(width) = structure.get::<i32>("width") {
-                        metadata.width = Some(width);
-                    }
-                    if let Ok(height) = structure.get::<i32>("height") {
-                        metadata.height = Some(height);
-                    }
-                    if let Ok(framerate) = structure.get::<gst::Fraction>("framerate") {
-                        metadata.framerate = Some(framerate.numer() as f64 / framerate.denom() as f64);
-                    }
-                },
-                "audio/x-raw" => {
-                    if let Ok(channels) = structure.get::<i32>("channels") {
-                        metadata.channels = Some(channels);
-                    }
-                    if let Ok(rate) = structure.get::<i32>("rate") {
-                        metadata.sample_rate = Some(rate);
-                    }
-                },
-                _ => (),
-            }
-        });
-
-        self.setup_pipeline()?;
-        Ok(metadata)
+        self.process_messages()
     }
 }

@@ -46,7 +46,7 @@ async fn handle_ws_connection(
         if let Ok(text) = msg.to_text() {
             if let Ok(envelope) = serde_json::from_str::<MessageEnvelope>(text) {
                 let mut processor = state.message_processor.lock().await;
-                if let Err(e) = processor.process_messages(vec![envelope]).await {
+                if let Err(e) = processor.process_messages().await {
                     error!("Failed to process message: {}", e);
                 }
             }
@@ -77,7 +77,7 @@ async fn send_message(
     };
 
     let mut processor = state.message_processor.lock().await;
-    processor.process_messages(vec![envelope.clone()]).await
+    processor.process_messages().await
         .map_err(|e| Error::internal(format!("Failed to process message: {}", e)))?;
 
     Ok(Json(MessageId(envelope.id)))

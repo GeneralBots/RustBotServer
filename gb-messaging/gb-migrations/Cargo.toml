@@ -1,0 +1,22 @@
+[package]
+name = "gb-migrations"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "migrations"
+path = "src/bin/migrations.rs"
+
+[dependencies]
+tokio.workspace = true
+sqlx.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+serde_json.workspace = true
+gb-core = { path = "../gb-core" }
+
+[dev-dependencies]
+rstest.workspace = true

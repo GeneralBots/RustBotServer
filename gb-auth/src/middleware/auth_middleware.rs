@@ -3,9 +3,7 @@ use axum::{
     middleware::Next,
     body::Body,
 };
-use axum_extra::TypedHeader;
-use axum_extra::headers::{Authorization, authorization::Bearer};
-use gb_core::User;
+use headers::{Authorization, authorization::Bearer};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Serialize, Deserialize};
 use crate::AuthError;
@@ -17,10 +15,10 @@ struct Claims {
 }
 
 pub async fn auth_middleware(
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+    auth: Authorization<Bearer>,
     request: Request<Body>,
     next: Next,
-) -> Result<Response, AuthError> {
+) -> Result<Response<Body>, AuthError> {
     let token = auth.token();
     let key = DecodingKey::from_secret(b"secret");
     let validation = Validation::default();
