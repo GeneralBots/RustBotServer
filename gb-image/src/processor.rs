@@ -130,7 +130,7 @@ impl ImageProcessor {
         let mut api = Tesseract::new(None, Some("eng"))
             .map_err(|e| Error::internal(format!("Failed to initialize Tesseract: {}", e)))?;
 
-        api.set_image(temp_file.path())
+        api.set_image(temp_file.path().to_str().unwrap())
             .map_err(|e| Error::internal(format!("Failed to set image: {}", e)))?;
 
         api.recognize()

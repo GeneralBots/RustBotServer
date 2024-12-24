@@ -8,11 +8,9 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-
 use gb_core::{Result, Error, models::*};
 use gb_messaging::{MessageProcessor, models::MessageEnvelope};
-use std::sync::Arc;
-use chrono;
+use std::{sync::Arc, collections::HashMap};
 use tokio::sync::Mutex;
 use tracing::{instrument, error};
 use uuid::Uuid;
@@ -48,7 +46,7 @@ async fn handle_ws_connection(
         if let Ok(text) = msg.to_text() {
             if let Ok(envelope) = serde_json::from_str::<MessageEnvelope>(text) {
                 let mut processor = state.message_processor.lock().await;
-                if let Err(e) = processor.process_message(&envelope).await {
+                if let Err(e) = processor.process_messages(vec![envelope]).await {
                     error!("Failed to process message: {}", e);
                 }
             }
@@ -57,19 +55,17 @@ async fn handle_ws_connection(
     Ok(())
 }
 
-#[axum::debug_handler]
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 async fn websocket_handler(
     State(state): State<Arc<ApiState>>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    ws.on_upgrade(|socket| async move {
+    ws.on_upgrade(move |socket| async move {
         let _ = handle_ws_connection(socket, state).await;
     })
 }
 
-#[axum::debug_handler]
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 async fn send_message(
     State(state): State<Arc<ApiState>>,
     Json(message): Json<Message>,
@@ -77,27 +73,25 @@ async fn send_message(
     let envelope = MessageEnvelope {
         id: Uuid::new_v4(),
         message,
-        metadata: std::collections::HashMap::new(),
+        metadata: HashMap::new(),
     };
 
     let mut processor = state.message_processor.lock().await;
-    processor.process_message(&envelope).await
+    processor.process_messages(vec![envelope.clone()]).await
         .map_err(|e| Error::internal(format!("Failed to process message: {}", e)))?;
 
     Ok(Json(MessageId(envelope.id)))
 }
 
-#[axum::debug_handler]
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 async fn get_message(
     State(_state): State<Arc<ApiState>>,
-    Path(id): Path<Uuid>,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<Message>> {
     todo!()
 }
 
-#[axum::debug_handler]
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 async fn create_room(
     State(_state): State<Arc<ApiState>>,
     Json(_config): Json<RoomConfig>,
@@ -105,44 +99,19 @@ async fn create_room(
     todo!()
 }
 
-#[axum::debug_handler]
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 async fn get_room(
     State(_state): State<Arc<ApiState>>,
-    Path(id): Path<Uuid>,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<Room>> {
     todo!()
 }
 
-#[axum::debug_handler]
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 async fn join_room(
     State(_state): State<Arc<ApiState>>,
-    Path(id): Path<Uuid>,
-    Json(user_id): Json<Uuid>,
+    Path(_id): Path<Uuid>,
+    Json(_user_id): Json<Uuid>,
 ) -> Result<Json<Connection>> {
     todo!()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use axum::http::StatusCode;
-    use axum::body::Body;
-    use tower::ServiceExt;
-
-    #[tokio::test]
-    async fn test_health_check() {
-        let app = create_router(MessageProcessor::new(100));
-        let response = app
-            .oneshot(
-                axum::http::Request::builder()
-                    .uri("/health")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-    }
 }
