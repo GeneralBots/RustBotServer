@@ -8,15 +8,37 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+
 use gb_core::{Result, Error, models::*};
-use gb_messaging::{MessageProcessor, MessageEnvelope}; 
+use gb_messaging::{MessageProcessor, models::MessageEnvelope};  // Update this line
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+
 use tracing::{instrument, error};
 use uuid::Uuid;
-
 use futures_util::StreamExt;
 use futures_util::SinkExt;
+
+pub struct ApiState {
+    pub message_processor: Mutex<MessageProcessor>,
+}
+
+pub fn create_router(message_processor: MessageProcessor) -> Router {
+    let state = Arc::new(ApiState {
+        message_processor: Mutex::new(message_processor),
+    });
+
+    Router::new()
+        .route("/health", get(|| async { "OK" }))
+        .route("/messages", post(send_message))
+        .route("/messages/:id", get(get_message))
+        .route("/rooms", post(create_room))
+        .route("/rooms/:id", get(get_room))
+        .route("/rooms/:id/join", post(join_room))
+        .route("/ws", get(websocket_handler))
+        .with_state(state)
+}
 
 async fn handle_ws_connection(
     ws: WebSocket,
@@ -25,7 +47,6 @@ async fn handle_ws_connection(
     let (mut sender, mut receiver) = ws.split();
     // ... rest of the implementation
 }
-
 
 #[axum::debug_handler]
 #[instrument(skip(state, ws))]
@@ -80,8 +101,8 @@ async fn get_message(
 #[axum::debug_handler]
 #[instrument(skip(state, config))]
 async fn create_room(
-    State(state): State<Arc<ApiState>>,
-    Json(config): Json<RoomConfig>,
+    State(_state): State<Arc<ApiState>>,
+    Json(_config): Json<RoomConfig>,
 ) -> Result<Json<Room>> {
     todo!()
 }

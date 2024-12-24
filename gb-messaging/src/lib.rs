@@ -3,12 +3,14 @@ mod rabbitmq;
 mod redis_pubsub;
 mod websocket;
 mod processor;
+pub mod models;
 
 pub use kafka::Kafka;
 pub use rabbitmq::RabbitMQ;
 pub use redis_pubsub::RedisPubSub;
 pub use websocket::WebSocketClient;
 pub use processor::MessageProcessor;
+pub use models::MessageEnvelope;
 
 #[cfg(test)]
 mod tests {
