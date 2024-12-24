@@ -2349,6 +2349,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum 0.7.9",
+ "chrono",
  "futures-util",
  "gb-core",
  "gb-messaging",
@@ -2357,6 +2358,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tokio-stream",
  "tokio-test",
  "tower 0.4.13",
  "tower-http 0.5.2",
