@@ -10,6 +10,23 @@ use uuid::Uuid;
 #[derive(Debug)]
 pub struct CoreError(pub String);
 
+// Add these near the top with other type definitions
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CustomerStatus {
+    Active,
+    Inactive,
+    Suspended
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SubscriptionTier {
+    Free,
+    Pro,
+    Enterprise
+}
+
+
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Instance {
     pub id: Uuid,
@@ -125,14 +142,39 @@ pub struct User {
     pub created_at: DateTime<Utc>,
 }
 
+
+
+// Update the Customer struct to include these fields
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Customer {
     pub id: Uuid,
     pub name: String,
     pub max_instances: u32,
     pub email: String,
+    pub status: CustomerStatus,          // Add this field
+    pub subscription_tier: SubscriptionTier,  // Add this field
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl Customer {
+    pub fn new(
+        name: String, 
+        email: String, 
+        subscription_tier: SubscriptionTier,
+        max_instances: u32,
+    ) -> Self {
+        Customer {
+            id: Uuid::new_v4(),
+            name,
+            email,
+            max_instances,
+            subscription_tier,
+            status: CustomerStatus::Active,  // Default to Active
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

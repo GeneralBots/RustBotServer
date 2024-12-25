@@ -1,27 +1,13 @@
-use axum::{
-    extract::State,
-    Json,
-};
+use axum::{Json, Extension};
+use crate::services::AuthService;
+use crate::AuthError;
+use crate::models::{LoginRequest, LoginResponse};
 use std::sync::Arc;
 
-use crate::{
-    models::{LoginRequest, LoginResponse},
-    services::auth_service::AuthService,
-    Result,
-};
-
-pub async fn login(
-    State(auth_service): State<Arc<AuthService>>,
+pub async fn login_handler(
+    Extension(auth_service): Extension<Arc<AuthService>>,
     Json(request): Json<LoginRequest>,
-) -> Result<Json<LoginResponse>> {
+) -> Result<Json<LoginResponse>, AuthError> {
     let response = auth_service.login(request).await?;
     Ok(Json(response))
-}
-
-pub async fn logout() -> Result<()> {
-    Ok(())
-}
-
-pub async fn refresh_token() -> Result<Json<LoginResponse>> {
-    todo!()
 }

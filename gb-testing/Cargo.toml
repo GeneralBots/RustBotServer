@@ -10,6 +10,7 @@ gb-core = { path = "../gb-core" }
 gb-auth = { path = "../gb-auth" }
 gb-api = { path = "../gb-api" }
 
+anyhow="1.0"
 # Testing frameworks
 goose = "0.17"  # Load testing
 criterion = { version = "0.5", features = ["async_futures"] }

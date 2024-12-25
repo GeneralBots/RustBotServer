@@ -15,7 +15,7 @@ mod tests {
     #[tokio::test]
     async fn test_image_processing_integration() -> Result<()> {
         // Initialize components
-        let processor = ImageProcessor::new()?;
+        let processor = ImageProcessor::new();
 
         // Create test image
         let mut image = DynamicImage::new_rgb8(200, 200);

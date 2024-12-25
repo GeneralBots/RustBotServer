@@ -1,6 +1,6 @@
 use gb_core::{Result, Error};
 use crate::models::{LoginRequest, LoginResponse};
-use crate::models::user::DbUser;
+use crate::models::user::{DbUser, UserRole, UserStatus};
 use std::sync::Arc;
 use sqlx::PgPool;
 use argon2::{
@@ -8,6 +8,9 @@ use argon2::{
     Argon2,
 };
 use rand::rngs::OsRng;
+use chrono::{DateTime, Utc, Duration};  // Add chrono imports
+use jsonwebtoken::{encode, EncodingKey, Header};
+use serde::{Serialize, Deserialize};
 
 pub struct AuthService {
     db: Arc<PgPool>,
@@ -28,7 +31,14 @@ impl AuthService {
         let user = sqlx::query_as!(
             DbUser,
             r#"
-            SELECT id, email, password_hash, role
+            SELECT 
+                id, 
+                email, 
+                password_hash,
+                role as "role!: String",
+                status as "status!: String",
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>"
             FROM users 
             WHERE email = $1
             "#,
@@ -38,6 +48,17 @@ impl AuthService {
         .await
         .map_err(|e| Error::internal(e.to_string()))?
         .ok_or_else(|| Error::internal("Invalid credentials"))?;
+
+        // Convert the string fields to their respective enum types
+        let user = DbUser {
+            id: user.id,
+            email: user.email,
+            password_hash: user.password_hash,
+            role: UserRole::from(user.role),
+            status: UserStatus::from(user.status),
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+        };
 
         self.verify_password(&request.password, &user.password_hash)?;
 
@@ -71,10 +92,6 @@ impl AuthService {
     }
 
     fn generate_token(&self, user: &DbUser) -> Result<String> {
-        use jsonwebtoken::{encode, EncodingKey, Header};
-        use serde::{Serialize, Deserialize};
-        use chrono::{Utc, Duration};
-
         #[derive(Debug, Serialize, Deserialize)]
         struct Claims {
             sub: String,

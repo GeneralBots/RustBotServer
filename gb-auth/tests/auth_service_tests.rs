@@ -1,33 +1,29 @@
 #[cfg(test)]
 mod tests {
-    use crate::services::auth_service::AuthService;
-    use crate::models::{LoginRequest, User};
+    use gb_auth::services::auth_service::AuthService;
+    use gb_auth::models::LoginRequest; 
+    use gb_core::models::User;
     use sqlx::PgPool;
-    use std::sync::Arc;
+use std::sync::Arc;
     use rstest::*;
-
-    async fn setup_test_db() -> PgPool {
-        let database_url = std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://postgres:postgres@localhost/gb_auth_test".to_string());
-        
-        PgPool::connect(&database_url)
-            .await
-            .expect("Failed to connect to database")
-    }
-
+    
     #[fixture]
     async fn auth_service() -> AuthService {
-        let pool = setup_test_db().await;
+        let db_pool = PgPool::connect("postgresql://postgres:postgres@localhost:5432/test_db")
+            .await
+            .expect("Failed to create database connection");
+        
         AuthService::new(
-            Arc::new(pool),
+            Arc::new(db_pool),
             "test_secret".to_string(),
-            3600,
+            3600 
         )
     }
 
     #[rstest]
-    #[tokio::test]
-    async fn test_login_success(auth_service: AuthService) {
+    #[tokio::test] 
+    async fn test_login_success() -> Result<(), Box<dyn std::error::Error>> {
+        let auth_service = auth_service().await;
         let request = LoginRequest {
             email: "test@example.com".to_string(),
             password: "password123".to_string(),
@@ -35,17 +31,20 @@ mod tests {
 
         let result = auth_service.login(request).await;
         assert!(result.is_ok());
+        Ok(())
     }
 
     #[rstest]
     #[tokio::test]
-    async fn test_login_invalid_credentials(auth_service: AuthService) {
+    async fn test_login_invalid_credentials() -> Result<(), Box<dyn std::error::Error>> {
+        let auth_service = auth_service().await;
         let request = LoginRequest {
-            email: "wrong@example.com".to_string(),
-            password: "wrongpassword".to_string(),
+            email: "wrong@example.com".to_string(), 
+            password: "wrongpassword".to_string(), 
         };
 
         let result = auth_service.login(request).await;
         assert!(result.is_err());
+        Ok(())
     }
 }
