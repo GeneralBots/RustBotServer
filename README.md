@@ -1,171 +1,216 @@
-# General Bots 6 (GB6) Platform Architecture
+# General Bots 6 (GB6) Platform
 
-## Overview
-General Bots 6 (GB6) is a billion-scale real-time communication platform that integrates advanced bot capabilities, WebRTC-based multimedia communication, and enterprise-grade messaging. The platform is designed to support massive concurrent usage while maintaining high performance and reliability.
+## Vision
+GB6 is a billion-scale real-time communication platform integrating advanced bot capabilities, WebRTC multimedia, and enterprise-grade messaging, built with Rust for maximum performance and reliability and BASIC-WebAssembly VM.
 
-## Key Capabilities
-- **Scale**: Supports billions of active users and millions of concurrent rooms
-- **Performance**: Sub-second message delivery with 4K video streaming capabilities
-- **Storage**: Petabyte-scale message and media storage
-- **Distribution**: Global presence with regional optimization
-- **Reliability**: 99.99% uptime guarantee with zero message loss
-- **Security**: Enterprise-grade security with multi-tenant isolation
+## 🌟 Key Features
 
-## System Architecture
+### Scale & Performance
+- Billion+ active users support
+- Sub-second message delivery
+- 4K video streaming
+- 99.99% uptime guarantee
+- Zero message loss
+- Petabyte-scale storage
 
-### 1. Multi-Tenant Core
+### Core Services
+- **API Service** (gb-api)
+  - Axum-based REST & WebSocket
+  - Multi-tenant request routing
+  - Authentication & Authorization
+  - File handling & streaming
 
-#### Customer Management
-- **Organization Hierarchy**
-  - Multi-level customer organization structure
-  - Independent instance management
-  - Regional deployment controls
-  - Resource quota enforcement
-  
-#### Subscription & Billing
-- Usage tracking and analytics
-- Flexible billing models
-- Resource allocation management
-- Quota monitoring and enforcement
+- **Media Processing** (gb-media)
+  - WebRTC integration
+  - GStreamer transcoding
+  - Real-time track management
+  - Professional recording
 
-### 2. Communication Infrastructure
+- **Messaging** (gb-messaging)
+  - Kafka event processing
+  - RabbitMQ integration
+  - WebSocket communication
+  - Redis PubSub
 
-#### Real-time Rooms
-- **WebRTC Integration**
-  - High-quality audio/video streaming
-  - Dynamic track management
-  - Intelligent participant handling
-  - Scalable room management
-  
-- **Media Features**
-  - Professional recording capabilities
-  - Zoom-like video conferencing
-  - TikTok-style live streaming
-  - Advanced media processing
+- **Storage** (gb-storage)
+  - PostgreSQL with sharding
+  - Redis caching
+  - TiKV distributed storage
+  - Customer data management
 
-#### Messaging System
-- **Core Messaging**
-  - Sharded message processing
-  - Guaranteed message persistence
-  - Real-time delivery optimization
-  - Sophisticated message routing
-  
-- **Message Features**
-  - Delivery status tracking
-  - Full-text message search
-  - Thread management
-  - Rich media support
+## 🏗 Architecture
 
-### 3. Technical Infrastructure
+### Multi-Tenant Core
+- Organization hierarchy
+- Instance management
+- Resource quotas
+- Usage analytics
 
-#### Storage Architecture
-- **Relational Data (PostgreSQL)**
-  - Customer-based sharding
-  - Optimized table partitioning
-  - Read replica distribution
-  
-- **Real-time Data (TiKV)**
-  - Distributed key-value storage
-  - High-performance lookups
-  - Real-time data access
-  
-- **Caching Layer (Redis)**
-  - Session management
-  - Rate limiting implementation
-  - Temporary data storage
-  
-#### Message Processing
-- **Event Processing (Kafka)**
-  - Sharded topic management
-  - Efficient message routing
-  - Real-time event streaming
-  
-- **Real-time Updates (Redis Pub/Sub)**
-  - Presence management
-  - Status synchronization
-  - Instant notifications
+### Communication Infrastructure
+- WebRTC rooms
+- Real-time messaging
+- Media processing
+- Video conferencing
 
-#### Media Infrastructure
-- **WebRTC Services**
-  - Media server clustering
-  - Track multiplexing
-  - Real-time processing
-  - Efficient media storage
+### Storage Architecture
+```sql
+-- Customer Sharding Example
+CREATE TABLE customers (
+    id UUID PRIMARY KEY,
+    name TEXT,
+    subscription_tier TEXT,
+    status TEXT,
+    max_instances INTEGER
+);
+```
 
-### 4. Operational Excellence
+### Message Processing
+```rust
+// Kafka Producer Example
+pub async fn publish<T: Serialize>(
+    &self,
+    topic: &str,
+    key: &str,
+    message: &T,
+) -> Result<()>
+```
 
-#### Monitoring
-- System health metrics
-- Resource utilization tracking
-- Performance analytics
-- Quality assessments
-- Error monitoring
+## 🛠 Installation
+
+### Prerequisites
+- Rust 1.70+
+- Kubernetes cluster
+- PostgreSQL 13+
+- Redis 6+
+- Kafka 3.0+
+- GStreamer
+
+### Kubernetes Setup
+```bash
+# Initialize cluster
+./setup-k8s.sh
+
+# Deploy platform
+./deploy.sh
+```
+
+### Build & Run
+```bash
+# Build all services
+cargo build --workspace
+
+# Run tests
+cargo test --workspace
+
+# Start API service
+cargo run -p gb-api
+```
+
+## 📊 Monitoring & Operations
+
+### Health Metrics
+- System performance
+- Resource utilization
+- Error rates
 - Latency tracking
 
-#### Scaling Operations
-- Automated scaling rules
-- Dynamic shard management
-- Intelligent load balancing
-- Robust failover systems
-- Seamless data migration
+### Scaling Operations
+- Auto-scaling rules
+- Shard management
+- Load balancing
+- Failover systems
 
-#### Security Framework
-- Multi-factor authentication
-- Role-based authorization
-- Rate limit enforcement
+## 🔒 Security
+
+### Authentication & Authorization
+- Multi-factor auth
+- Role-based access
+- Rate limiting
 - End-to-end encryption
-- Comprehensive audit logging
 
-## Implementation Specifications
+### Data Protection
+- Tenant isolation
+- Encryption at rest
+- Secure communications
+- Audit logging
 
-### Technology Stack
-- **Core Services**: Rust for performance-critical components
-- **Benefits**:
-  - Maximum performance
-  - Memory safety guarantees
-  - Reliable concurrency
-  - System stability
+## 🚀 Development
 
-### Sharding Strategy
-- Customer-ID based sharding
-- Instance-level isolation
-- Geographic distribution
-- Data locality optimization
+### Project Structure
+```
+general-bots/
+├── gb-api/          # API service
+├── gb-core/         # Core functionality
+├── gb-media/        # Media processing
+├── gb-messaging/    # Message brokers
+├── gb-storage/      # Data storage
+├── gb-utils/        # Utilities
+├── k8s/             # Kubernetes configs
+└── migrations/      # DB migrations
+```
 
-### Performance Targets
-- Billion+ concurrent connections
-- Millisecond-level message delivery
-- 4K video streaming support
-- Petabyte-scale data management
+### Configuration
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/gbdb
+REDIS_URL=redis://localhost:6379
+KAFKA_BROKERS=localhost:9092
+RABBIT_URL=amqp://guest:guest@localhost:5672
+```
 
-### Reliability Standards
-- 99.99% platform availability
-- Zero message loss guarantee
-- Automated failover systems
-- Multiple data redundancy
+## 🌍 Deployment
 
-## Development Guidelines
+### Global Infrastructure
+- Edge presence
+- Regional optimization
+- Content delivery
+- Traffic management
 
-### Multi-tenant Considerations
-1. Strict tenant isolation
-2. Resource quota management
-3. Security boundary enforcement
-4. Performance isolation
-5. Independent scaling capabilities
-6. Tenant-specific monitoring
+### Disaster Recovery
+- Automated backups
+- Multi-region failover
+- Data replication
+- System redundancy
 
-### Bot Integration
-1. Automated workflow support
-2. Custom bot development
-3. AI/ML integration capabilities
-4. Event-driven automation
-5. Bot resource management
-6. Performance monitoring
+## 🤝 Contributing
 
-## Deployment Architecture
-1. Global edge presence
-2. Regional data centers
-3. Content delivery optimization
-4. Traffic management
-5. Disaster recovery
-6. Backup systems
+1. Fork repository
+2. Create feature branch
+3. Implement changes
+4. Add tests
+5. Submit PR
+
+## 📝 License
+
+Licensed under terms specified in workspace configuration.
+
+## 🆘 Support
+
+### Issues
+- Check existing issues
+- Provide reproduction steps
+- Include relevant logs
+- Follow up on discussions
+
+### Documentation
+- API references
+- Integration guides
+- Deployment docs
+- Best practices
+
+## 🔮 Roadmap
+
+### Short Term
+- Enhanced media processing
+- Additional messaging protocols
+- Improved scalability
+- Extended monitoring
+
+### Long Term
+- AI/ML integration
+- Advanced analytics
+- Global expansion
+- Enterprise features
+
+---
+
+Built with ❤️ from Brazil, using Rust for maximum performance and reliability.
