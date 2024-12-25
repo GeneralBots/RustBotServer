@@ -5,8 +5,7 @@ pub use errors::{Error, ErrorKind, Result};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::models::{Customer, CustomerStatus, SubscriptionTier};
+    use crate::models::{Customer, SubscriptionTier};
     use rstest::*;
 
 #[fixture]

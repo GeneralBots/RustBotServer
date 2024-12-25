@@ -11,15 +11,20 @@ pub use redis_pubsub::RedisPubSub;
 pub use websocket::WebSocketClient;
 pub use processor::MessageProcessor;
 pub use models::MessageEnvelope;
+mod broker;
+pub use broker::KafkaBroker;
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use gb_core::models::Message;
     use serde::{Deserialize, Serialize};
-    use std::time::Duration;
     use uuid::Uuid;
-
+    use std::sync::Arc;
+    use redis::Client;
+    use tokio::sync::broadcast;
+    use std::collections::HashMap;
+    
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
     struct TestMessage {
         id: Uuid,
@@ -31,12 +36,10 @@ mod tests {
         let kafka = KafkaBroker::new(
             "localhost:9092",
             "test-group",
-        ).unwrap();
-
-        let redis = RedisPubSub::new("redis://localhost")
-            .await
-            .unwrap();
-
+        );
+                let redis_client = Client::open("redis://localhost")
+                    .expect("Failed to create Redis client");
+        let redis = RedisPubSub::new(Arc::new(redis_client));
         let rabbitmq = RabbitMQ::new("amqp://localhost:5672")
             .await
             .unwrap();
@@ -62,11 +65,11 @@ mod tests {
             .await
             .unwrap();
 
-        websocket.send_message(serde_json::to_string(&test_message).unwrap())
+        websocket.send_message(&serde_json::to_string(&test_message).unwrap())
             .await
             .unwrap();
 
-        let mut processor = MessageProcessor::new(100);
+        let mut processor = MessageProcessor::new();
         
         processor.register_handler("test", |envelope| {
             println!("Processed message: {}", envelope.message.content);
@@ -92,6 +95,6 @@ mod tests {
             metadata: std::collections::HashMap::new(),
         };
 
-        processor.sender().send(envelope).await.unwrap();
+        processor.sender().send(envelope).unwrap();
     }
 }

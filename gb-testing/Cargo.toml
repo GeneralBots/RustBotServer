@@ -1,9 +1,9 @@
 [package]
 name = "gb-testing"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
 gb-core = { path = "../gb-core" }
@@ -19,8 +19,8 @@ k8s-openapi = { version = "0.18", features = ["v1_26"] }
 kube = { version = "0.82", features = ["runtime", "derive"] }
 
 # Async Runtime
-tokio.workspace = true
-async-trait.workspace = true
+tokio= { workspace = true }
+async-trait= { workspace = true }
 
 # HTTP Client
 reqwest = { version = "0.11", features = ["json", "stream"] }
@@ -31,17 +31,17 @@ tokio-tungstenite = "0.20"
 tungstenite = "0.20"
 
 # Database
-sqlx.workspace = true
-redis.workspace = true
+sqlx= { workspace = true }
+redis= { workspace = true }
 
 # Metrics & Monitoring
 prometheus = { version = "0.13.0", features = ["process"] }
-tracing.workspace = true
-opentelemetry.workspace = true
+tracing= { workspace = true }
+opentelemetry= { workspace = true }
 
 # Serialization
-serde.workspace = true
-serde_json.workspace = true
+serde= { workspace = true }
+serde_json= { workspace = true }
 
 # Utils
 futures = "0.3"

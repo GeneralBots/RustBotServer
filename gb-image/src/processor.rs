@@ -1,5 +1,5 @@
 use gb_core::{Error, Result};
-use image::{DynamicImage, ImageOutputFormat, Rgba, RgbaImage};
+use image::{DynamicImage, ImageOutputFormat, Rgba};
 use imageproc::drawing::draw_text_mut;
 use rusttype::{Font, Scale};
 use std::io::Cursor;

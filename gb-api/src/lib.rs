@@ -13,7 +13,7 @@ mod tests {
     #[tokio::test]
     async fn test_api_integration() {
         // Initialize message processor
-        let processor = MessageProcessor::new(100);
+        let processor = MessageProcessor::new();
         
         // Create router
         let app: Router = create_router(processor);

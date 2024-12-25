@@ -3,7 +3,6 @@ use webrtc::{
     api::{API, APIBuilder},
     peer_connection::{
         RTCPeerConnection,
-        peer_connection_state::RTCPeerConnectionState,
         configuration::RTCConfiguration,
     },
     track::{

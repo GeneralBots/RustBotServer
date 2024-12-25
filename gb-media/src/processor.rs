@@ -12,9 +12,7 @@ impl MediaProcessor {
     pub fn new() -> Result<Self> {
         gst::init().map_err(|e| Error::internal(format!("Failed to initialize GStreamer: {}", e)))?;
 
-        let pipeline = gst::Pipeline::new()
-            .map_err(|e| Error::internal(format!("Failed to create pipeline: {}", e)))?;
-
+        let pipeline = gst::Pipeline::new();
         Ok(Self { pipeline })
     }
 
@@ -57,21 +55,23 @@ impl MediaProcessor {
         format: &str
     ) -> Result<()> {
         let source = gst::ElementFactory::make("filesrc")
+            .build()
             .map_err(|e| Error::internal(format!("Failed to create source element: {}", e)))?;
         source.set_property("location", input_path.to_str().unwrap());
 
         let sink = gst::ElementFactory::make("filesink")
+            .build()
             .map_err(|e| Error::internal(format!("Failed to create sink element: {}", e)))?;
         sink.set_property("location", output_path.to_str().unwrap());
 
         let decoder = match format.to_lowercase().as_str() {
-            "mp4" => gst::ElementFactory::make("qtdemux"),
-            "webm" => gst::ElementFactory::make("matroskademux"),
+            "mp4" => gst::ElementFactory::make("qtdemux").build(),
+            "webm" => gst::ElementFactory::make("matroskademux").build(),
             _ => return Err(Error::internal(format!("Unsupported format: {}", format)))
         }.map_err(|e| Error::internal(format!("Failed to create decoder: {}", e)))?;
 
         self.pipeline.add_many(&[&source, &decoder, &sink])
-            .map_err(|e| Error::internal(format!("Failed to add elements: {}", e)))?;
+                    .map_err(|e| Error::internal(format!("Failed to add elements: {}", e)))?;
 
         gst::Element::link_many(&[&source, &decoder, &sink])
             .map_err(|e| Error::internal(format!("Failed to link elements: {}", e)))?;

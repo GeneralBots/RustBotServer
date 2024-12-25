@@ -2,7 +2,6 @@
 mod tests {
     use gb_auth::services::auth_service::AuthService;
     use gb_auth::models::LoginRequest; 
-    use gb_core::models::User;
     use sqlx::PgPool;
 use std::sync::Arc;
     use rstest::*;

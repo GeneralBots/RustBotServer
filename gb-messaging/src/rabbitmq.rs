@@ -157,19 +157,24 @@ mod tests {
     #[rstest]
     #[tokio::test]
     async fn test_publish_subscribe(
-        rabbitmq: RabbitMQ,
+        #[future] rabbitmq: RabbitMQ,
         test_message: TestMessage,
     ) {
         let queue = "test_queue";
         let routing_key = "test_routing_key";
         
+        let rabbitmq = rabbitmq.await;
         let rabbitmq_clone = rabbitmq.clone();
         let test_message_clone = test_message.clone();
         
         let handle = tokio::spawn(async move {
-            let handler = |msg: TestMessage| async move {
-                assert_eq!(msg, test_message_clone);
-                Ok(())
+            let test_message_ref = test_message_clone.clone();
+            let handler = move |msg: TestMessage| {
+                let expected_msg = test_message_ref.clone();
+                async move {
+                    assert_eq!(msg, expected_msg);
+                    Ok(())
+                }
             };
             
             rabbitmq_clone.subscribe(queue, handler).await.unwrap();

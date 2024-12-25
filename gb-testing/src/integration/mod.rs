@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use testcontainers::clients::Cli;
 
 pub struct IntegrationTest {
-    pub docker: Cli,
+    docker: Cli,
     pub db_pool: PgPool,
 }
 
@@ -14,16 +14,15 @@ pub trait IntegrationTestCase {
     async fn teardown(&mut self) -> anyhow::Result<()>;
 }
 
-//pub struct TestEnvironment {
-    //pub postgres: testcontainers::Container<'static, testcontainers::images::postgres::Postgres>,
-    //pub redis: testcontainers::Container<'static, testcontainers::images::redis::Redis>,
-    // pub kafka: testcontainers::Container<'static, testcontainers::images::kafka::Kafka>,
-//
+pub struct TestEnvironment {
+    pub postgres: testcontainers::Container<'static, testcontainers::images::postgres::Postgres>,
+    pub redis: testcontainers::Container<'static, testcontainers::images::redis::Redis>,
+    pub kafka: testcontainers::Container<'static, testcontainers::images::kafka::Kafka>,
+}
 
-impl TestEnvironment {
-    pub async fn new() -> anyhow::Result<Self> {
+impl IntegrationTest {
+    pub fn new() -> Self {
         let docker = Cli::default();
-        
         // Start PostgreSQL
         let postgres = docker.run(testcontainers::images::postgres::Postgres::default());
         
@@ -33,10 +32,9 @@ impl TestEnvironment {
         // Start Kafka
         let kafka = docker.run(testcontainers::images::kafka::Kafka::default());
 
-        Ok(Self {
-            postgres,
-            redis,
-            kafka,
-        })
+        Self {
+            docker,
+            db_pool: todo!(),
     }
+}
 }

@@ -1,9 +1,9 @@
 [package]
 name = "gb-image"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
 gb-core = { path = "../gb-core" }
@@ -11,16 +11,16 @@ image = { version = "0.24", features = ["webp", "jpeg", "png", "gif"] }
 imageproc = "0.23"
 rusttype = "0.9"
 tesseract = "0.12"
-async-trait.workspace = true
-tokio.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-tracing.workspace = true
+async-trait= { workspace = true }
+tokio= { workspace = true }
+serde= { workspace = true }
+serde_json= { workspace = true }
+thiserror= { workspace = true }
+tracing= { workspace = true }
 tempfile = "3.8"
 
 [dev-dependencies]
-rstest.workspace = true
+rstest= { workspace = true }
 tokio-test = "0.4"
 
 

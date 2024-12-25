@@ -1,27 +1,27 @@
 [package]
 name = "gb-api"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
 gb-core = { path = "../gb-core" }
 gb-messaging = { path = "../gb-messaging" }
 gb-monitoring = { path = "../gb-monitoring" }
-tokio.workspace = true
+tokio= { workspace = true }
 axum = { version = "0.7.9", features = ["ws", "multipart", "macros"] }
-tower.workspace = true
+tower= { workspace = true }
 tower-http = { version = "0.5", features = ["cors", "trace"] }
-serde.workspace = true
-serde_json.workspace = true
-uuid.workspace = true
-tracing.workspace = true
-async-trait.workspace = true
+serde= { workspace = true }
+serde_json= { workspace = true }
+uuid= { workspace = true }
+tracing= { workspace = true }
+async-trait= { workspace = true }
 futures-util = { version = "0.3", features = ["sink"] }
 chrono = { workspace = true, features = ["serde"] }
 tokio-stream = "0.1.17"
 
 [dev-dependencies]
-rstest.workspace = true
+rstest= { workspace = true }
 tokio-test = "0.4"

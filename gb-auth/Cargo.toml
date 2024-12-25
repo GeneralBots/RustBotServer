@@ -1,9 +1,9 @@
 [package]
 name = "gb-auth"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
 gb-core = { path = "../gb-core" }
@@ -18,8 +18,8 @@ tokio-openssl = "0.6"
 ring = "0.17"
 
 # Async Runtime
-tokio.workspace = true
-async-trait.workspace = true
+tokio= { workspace = true }
+async-trait= { workspace = true }
 
 
 # Database
@@ -34,7 +34,7 @@ serde_json = "1.0"
 thiserror = "1.0"
 
 # Logging & Metrics
-tracing.workspace = true
+tracing= { workspace = true }
 
 # Utils
 chrono = { version = "0.4", features = ["serde"] }

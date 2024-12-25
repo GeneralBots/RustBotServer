@@ -44,7 +44,7 @@ async fn handle_ws_connection(
     
     while let Some(Ok(msg)) = receiver.next().await {
         if let Ok(text) = msg.to_text() {
-            if let Ok(envelope) = serde_json::from_str::<MessageEnvelope>(text) {
+            if let Ok(_envelope) = serde_json::from_str::<MessageEnvelope>(text) {
                 let mut processor = state.message_processor.lock().await;
                 if let Err(e) = processor.process_messages().await {
                     error!("Failed to process message: {}", e);

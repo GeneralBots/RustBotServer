@@ -3,7 +3,7 @@ use prometheus::{IntCounter, IntGauge, Histogram, Registry};
 pub struct Metrics {
     registry: Registry,
     message_counter: IntCounter,
-    active_connections: IntGauge,
+    pub active_connections: IntGauge,
     message_processing_time: Histogram,
 }
 
@@ -59,6 +59,8 @@ impl Metrics {
 
 #[cfg(test)]
 mod tests {
+    use prometheus::Encoder as _;
+
     use super::*;
     
     #[test]

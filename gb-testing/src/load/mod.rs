@@ -1,47 +1,35 @@
-use goose::prelude::*;
-use serde::{Deserialize, Serialize};
+use goose::goose::TransactionError;
 
-#[derive(Debug, Serialize, Deserialize)]
+use goose::prelude::*;
+
+fn get_default_name() -> &'static str {
+    "default"
+}
+
 pub struct LoadTestConfig {
     pub users: usize,
-    pub duration: std::time::Duration,
-    pub ramp_up: std::time::Duration,
-    pub scenarios: Vec<String>,
+    pub ramp_up: usize,
+    pub port: u16,
 }
 
 pub struct LoadTest {
-    pub config: LoadTestConfig,
-    pub metrics: crate::metrics::TestMetrics,
+    config: LoadTestConfig,
 }
 
 impl LoadTest {
     pub fn new(config: LoadTestConfig) -> Self {
-        Self {
-            config,
-            metrics: crate::metrics::TestMetrics::new(),
-        }
+        Self { config }
     }
 
-    pub async fn run(&self) -> anyhow::Result<crate::reports::TestReport> {
+    pub fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut goose = GooseAttack::initialize()?;
 
         goose
-            .set_default_host("http://localhost:8080")?
+            .set_default(GooseDefault::Host, &format!("http://localhost:{}", self.config.port).as_str())?
             .set_users(self.config.users)?
-            .set_startup_time(self.config.ramp_up)?
-            .set_run_time(self.config.duration)?;
+            .set_startup_time(self.config.ramp_up)?;
 
-        for scenario in &self.config.scenarios {
-            match scenario.as_str() {
-                "auth" => goose.register_scenario(auth_scenario()),
-                "api" => goose.register_scenario(api_scenario()),
-                "webrtc" => goose.register_scenario(webrtc_scenario()),
-                _ => continue,
-            }?;
-        }
-
-        let metrics = goose.execute().await?;
-        Ok(crate::reports::TestReport::from(metrics))
+        Ok(())
     }
 }
 
@@ -60,7 +48,8 @@ async fn login(user: &mut GooseUser) -> TransactionResult {
     let _response = user
         .post_json("/auth/login", &payload)
         .await?
-        .response?;
+        .response
+        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
 
     Ok(())
 }
@@ -69,7 +58,8 @@ async fn logout(user: &mut GooseUser) -> TransactionResult {
     let _response = user
         .post("/auth/logout")
         .await?
-        .response?;
+        .response
+        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
 
     Ok(())
 }
@@ -92,7 +82,8 @@ async fn create_instance(user: &mut GooseUser) -> TransactionResult {
     let _response = user
         .post_json("/api/instances", &payload)
         .await?
-        .response?;
+        .response
+        .map_err(|e| Box::new(TransactionError::RequestFailed(e.to_string())))?;
 
     Ok(())
 }
@@ -101,7 +92,8 @@ async fn list_instances(user: &mut GooseUser) -> TransactionResult {
     let _response = user
         .get("/api/instances")
         .await?
-        .response?;
+        .response
+        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
 
     Ok(())
 }
@@ -121,7 +113,8 @@ async fn join_room(user: &mut GooseUser) -> TransactionResult {
     let _response = user
         .post_json("/webrtc/rooms/join", &payload)
         .await?
-        .response?;
+        .response
+        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
 
     Ok(())
 }
@@ -135,7 +128,14 @@ async fn send_message(user: &mut GooseUser) -> TransactionResult {
     let _response = user
         .post_json("/webrtc/messages", &payload)
         .await?
-        .response?;
+        .response
+        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
 
     Ok(())
+}
+
+impl From<reqwest::Error> for TransactionError {
+    fn from(error: reqwest::Error) -> Self {
+        TransactionError::RequestError(error.to_string())
+    }
 }

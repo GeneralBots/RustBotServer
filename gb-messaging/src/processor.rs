@@ -1,49 +1,60 @@
-use gb_core::{Result, Error, models::Message};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use tokio::sync::mpsc;
-use tracing::{instrument, error};
-use uuid::Uuid;
+use gb_core::Result;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MessageEnvelope {
-    pub id: Uuid,
-    pub message: Message,
-    pub metadata: HashMap<String, String>,
-}
+use tracing::{error, instrument};
+use uuid::Uuid;
+use std::sync::Arc;
+use tokio::sync::broadcast;
+use std::collections::HashMap;
+
+use crate::MessageEnvelope;
 
 pub struct MessageProcessor {
-    tx: mpsc::Sender<MessageEnvelope>,
-    rx: mpsc::Receiver<MessageEnvelope>,
-    handlers: HashMap<String, Box<dyn Fn(MessageEnvelope) -> Result<()> + Send + Sync>>,
+    tx: broadcast::Sender<MessageEnvelope>,
+    rx: broadcast::Receiver<MessageEnvelope>,
+    handlers: Arc<HashMap<String, Box<dyn Fn(MessageEnvelope) -> Result<()> + Send + Sync>>>,
+}
+
+impl Clone for MessageProcessor {
+    fn clone(&self) -> Self {
+        MessageProcessor {
+            tx: self.tx.clone(), 
+            rx: self.tx.subscribe(),
+            handlers: Arc::clone(&self.handlers),
+        }
+    }
 }
 
 impl MessageProcessor {
-    pub fn new(buffer_size: usize) -> Self {
-        let (tx, rx) = mpsc::channel(buffer_size);
-        
+    pub fn new() -> Self {
+        Self::new_with_buffer_size(100)
+    }
+
+    pub fn new_with_buffer_size(buffer_size: usize) -> Self {
+        let (tx, rx) = broadcast::channel(buffer_size);
         Self {
             tx,
             rx,
-            handlers: HashMap::new(),
+            handlers: Arc::new(HashMap::new()),
         }
     }
 
-    pub fn sender(&self) -> mpsc::Sender<MessageEnvelope> {
+    pub fn sender(&self) -> broadcast::Sender<MessageEnvelope> {
         self.tx.clone()
     }
 
     #[instrument(skip(self, handler))]
-    pub fn register_handler<F>(&mut self, kind: &str, handler: F)
+    pub fn register_handler<F>(&mut self, kind: &str, handler: F) 
     where
         F: Fn(MessageEnvelope) -> Result<()> + Send + Sync + 'static,
     {
-        self.handlers.insert(kind.to_string(), Box::new(handler));
+        Arc::get_mut(&mut self.handlers)
+            .expect("Cannot modify handlers")
+            .insert(kind.to_string(), Box::new(handler));
     }
 
     #[instrument(skip(self))]
     pub async fn process_messages(&mut self) -> Result<()> {
-        while let Some(envelope) = self.rx.recv().await {
+        while let Ok(envelope) = self.rx.recv().await {
             if let Some(handler) = self.handlers.get(&envelope.message.kind) {
                 if let Err(e) = handler(envelope.clone()) {
                     error!("Handler error for message {}: {}", envelope.id, e);
@@ -52,7 +63,6 @@ impl MessageProcessor {
                 error!("No handler registered for message kind: {}", envelope.message.kind);
             }
         }
-
         Ok(())
     }
 }
@@ -60,8 +70,9 @@ impl MessageProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gb_core::models::Message;
     use rstest::*;
-    use std::sync::Arc;
+    use std::{sync::Arc, time::Duration};
     use tokio::sync::Mutex;
 
     #[fixture]
@@ -83,11 +94,10 @@ mod tests {
     #[rstest]
     #[tokio::test]
     async fn test_message_processor(test_message: Message) {
-        let mut processor = MessageProcessor::new(100);
+        let mut processor = MessageProcessor::new();
         let processed = Arc::new(Mutex::new(false));
         let processed_clone = processed.clone();
 
-        // Register handler
         processor.register_handler("test", move |envelope| {
             assert_eq!(envelope.message.content, "test content");
             let mut processed = processed_clone.blocking_lock();
@@ -95,25 +105,21 @@ mod tests {
             Ok(())
         });
 
-        // Start processing in background
         let mut processor_clone = processor.clone();
         let handle = tokio::spawn(async move {
             processor_clone.process_messages().await.unwrap();
         });
 
-        // Send test message
         let envelope = MessageEnvelope {
             id: Uuid::new_v4(),
             message: test_message,
             metadata: HashMap::new(),
         };
 
-        processor.sender().send(envelope).await.unwrap();
+        processor.sender().send(envelope).unwrap();
 
-        // Wait for processing
         tokio::time::sleep(Duration::from_secs(1)).await;
         
-        // Verify message was processed
         assert!(*processed.lock().await);
         
         handle.abort();

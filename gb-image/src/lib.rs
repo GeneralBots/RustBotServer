@@ -29,9 +29,9 @@ mod tests {
         assert_eq!(cropped.width(), 100);
         assert_eq!(cropped.height(), 100);
 
-        let blurred = processor.apply_blur(&image, 1.0);
-        let brightened = processor.adjust_brightness(&image, 10);
-        let contrasted = processor.adjust_contrast(&image, 1.2);
+        let _blurred = processor.apply_blur(&image, 1.0);
+        let _brightened = processor.adjust_brightness(&image, 10);
+        let _contrasted = processor.adjust_contrast(&image, 1.2);
 
         // Test text addition
         processor.add_text(
@@ -44,10 +44,10 @@ mod tests {
         )?;
 
         // Test format conversion
-        let webp_data = ImageConverter::to_webp(&image, 80)?;
-        let jpeg_data = ImageConverter::to_jpeg(&image, 80)?;
-        let png_data = ImageConverter::to_png(&image)?;
-        let gif_data = ImageConverter::to_gif(&image)?;
+        let _webp_data = ImageConverter::to_webp(&image, 80)?;
+        let _jpeg_data = ImageConverter::to_jpeg(&image, 80)?;
+        let _png_data = ImageConverter::to_png(&image)?;
+        let _gif_data = ImageConverter::to_gif(&image)?;
 
         Ok(())
     }

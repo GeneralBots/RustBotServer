@@ -23,9 +23,9 @@ impl WebSocketClient {
         })
     }
 
-    pub async fn send_message(&mut self, payload: String) -> Result<()> {
+    pub async fn send_message(&mut self, payload: &str) -> Result<()> {
         self.stream
-            .send(Message::Text(payload))
+            .send(Message::Text(payload.to_string()))
             .await
             .map_err(Self::to_gb_error)?;
         Ok(())
@@ -35,8 +35,10 @@ impl WebSocketClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::StreamExt;
     use rstest::*;
     use serde::{Deserialize, Serialize};
+    use tokio_tungstenite::tungstenite::WebSocket;
     use std::time::Duration;
     use tokio::net::TcpListener;
     use uuid::Uuid;
@@ -79,8 +81,8 @@ mod tests {
     #[tokio::test]
     async fn test_websocket(test_message: TestMessage) {
         let server_url = create_test_server().await;
-        let mut client = WebSocket::new(&server_url).await.unwrap();
+        let mut client = WebSocketClient::connect(&server_url).await.unwrap();
         tokio::time::sleep(Duration::from_millis(100)).await;
-        client.send(&test_message).await.unwrap();
+        client.send_message(&serde_json::to_string(&test_message).unwrap()).await.unwrap();
     }
 }
