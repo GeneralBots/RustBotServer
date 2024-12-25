@@ -22,6 +22,8 @@ async-trait= { workspace = true }
 futures-util = { version = "0.3", features = ["sink"] }
 chrono = { workspace = true, features = ["serde"] }
 tokio-stream = "0.1.17"
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
+redis = { version = "0.23", features = ["tokio-comp"] }
 
 [dev-dependencies]
 rstest= { workspace = true }
