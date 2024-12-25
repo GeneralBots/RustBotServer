@@ -1,0 +1,58 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug GB API Server",
+            "cargo": {
+                "args": ["build", "--bin=gb-api"],
+                "filter": {
+                    "name": "gb-api",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug",
+                "DATABASE_URL": "postgresql://localhost:5432/gbdb",
+                "REDIS_URL": "redis://localhost:6379"
+            }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug GB API Tests",
+            "cargo": {
+                "args": ["test", "--package=gb-api", "--lib"],
+                "filter": {
+                    "name": "gb-api",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug Integration Tests",
+            "cargo": {
+                "args": ["test", "--package=gb-api", "--test=integration"],
+                "filter": {
+                    "name": "integration",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "API Server + Debug",
+            "configurations": ["Debug GB API Server"]
+        }
+    ]
+}
