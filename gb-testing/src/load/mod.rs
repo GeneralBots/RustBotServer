@@ -1,141 +1,137 @@
-use goose::goose::TransactionError;
+use rand::{distributions::Alphanumeric, Rng};
+use std::time::Duration;
 
-use goose::prelude::*;
-
-fn get_default_name() -> &'static str {
-    "default"
+/// Generates a random alphanumeric string of the specified length
+///
+/// # Arguments
+/// * `length` - The desired length of the random string
+///
+/// # Returns
+/// A String containing random alphanumeric characters
+#[must_use]
+pub fn generate_random_string(length: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
 }
 
-pub struct LoadTestConfig {
-    pub users: usize,
-    pub ramp_up: usize,
-    pub port: u16,
+/// Generates a vector of random bytes for testing purposes
+///
+/// # Arguments
+/// * `size` - The number of random bytes to generate
+///
+/// # Returns
+/// A Vec<u8> containing random bytes
+#[must_use]
+pub fn generate_test_data(size: usize) -> Vec<u8> {
+    let mut rng = rand::thread_rng();
+    (0..size).map(|_| rng.gen::<u8>()).collect()
 }
 
-pub struct LoadTest {
-    config: LoadTestConfig,
-}
+/// Executes an operation with exponential backoff retry strategy
+///
+/// # Arguments
+/// * `operation` - The async operation to execute
+/// * `max_retries` - Maximum number of retry attempts
+/// * `initial_delay` - Initial delay duration between retries
+///
+/// # Returns
+/// Result containing the operation output or an error
+///
+/// # Errors
+/// Returns the last error encountered after all retries are exhausted
+pub async fn exponential_backoff<F, Fut, T>(
+    mut operation: F,
+    max_retries: u32,
+    initial_delay: Duration,
+) -> anyhow::Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = anyhow::Result<T>>,
+{
+    let mut retries = 0;
+    let mut delay = initial_delay;
 
-impl LoadTest {
-    pub fn new(config: LoadTestConfig) -> Self {
-        Self { config }
-    }
-
-    pub fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut goose = GooseAttack::initialize()?;
-
-        goose
-            .set_default(GooseDefault::Host, &format!("http://localhost:{}", self.config.port).as_str())?
-            .set_users(self.config.users)?
-            .set_startup_time(self.config.ramp_up)?;
-
-        Ok(())
-    }
-}
-
-fn auth_scenario() -> Scenario {
-    scenario!("Authentication")
-        .register_transaction(transaction!(login))
-        .register_transaction(transaction!(logout))
-}
-
-async fn login(user: &mut GooseUser) -> TransactionResult {
-    let payload = serde_json::json!({
-        "email": "test@example.com",
-        "password": "password123"
-    });
-
-    let _response = user
-        .post_json("/auth/login", &payload)
-        .await?
-        .response
-        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
-
-    Ok(())
-}
-
-async fn logout(user: &mut GooseUser) -> TransactionResult {
-    let _response = user
-        .post("/auth/logout")
-        .await?
-        .response
-        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
-
-    Ok(())
-}
-
-fn api_scenario() -> Scenario {
-    scenario!("API")
-        .register_transaction(transaction!(create_instance))
-        .register_transaction(transaction!(list_instances))
-}
-
-async fn create_instance(user: &mut GooseUser) -> TransactionResult {
-    let payload = serde_json::json!({
-        "name": "test-instance",
-        "config": {
-            "memory": "512Mi",
-            "cpu": "0.5"
+    loop {
+        match operation().await {
+            Ok(value) => return Ok(value),
+            Err(error) => {
+                if retries >= max_retries {
+                    return Err(anyhow::anyhow!("Operation failed after {} retries: {}", max_retries, error));
+                }
+                tokio::time::sleep(delay).await;
+                delay = delay.saturating_mul(2); // Prevent overflow
+                retries += 1;
+            }
         }
-    });
-
-    let _response = user
-        .post_json("/api/instances", &payload)
-        .await?
-        .response
-        .map_err(|e| Box::new(TransactionError::RequestFailed(e.to_string())))?;
-
-    Ok(())
+    }
 }
 
-async fn list_instances(user: &mut GooseUser) -> TransactionResult {
-    let _response = user
-        .get("/api/instances")
-        .await?
-        .response
-        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
-
-    Ok(())
+/// Formats a Duration into a human-readable string in HH:MM:SS format
+///
+/// # Arguments
+/// * `duration` - The Duration to format
+///
+/// # Returns
+/// A String in the format "HH:MM:SS"
+#[must_use]
+pub fn format_duration(duration: Duration) -> String {
+    let total_seconds = duration.as_secs();
+    let hours = total_seconds / 3600;
+    let minutes = (total_seconds % 3600) / 60;
+    let seconds = total_seconds % 60;
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
-fn webrtc_scenario() -> Scenario {
-    scenario!("WebRTC")
-        .register_transaction(transaction!(join_room))
-        .register_transaction(transaction!(send_message))
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-async fn join_room(user: &mut GooseUser) -> TransactionResult {
-    let payload = serde_json::json!({
-        "room_id": "test-room",
-        "user_id": "test-user"
-    });
+    #[test]
+    fn test_generate_random_string() {
+        let length = 10;
+        let result = generate_random_string(length);
+        assert_eq!(result.len(), length);
+    }
 
-    let _response = user
-        .post_json("/webrtc/rooms/join", &payload)
-        .await?
-        .response
-        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
+    #[test]
+    fn test_generate_test_data() {
+        let size = 100;
+        let result = generate_test_data(size);
+        assert_eq!(result.len(), size);
+    }
 
-    Ok(())
-}
+    #[test]
+    fn test_format_duration() {
+        let duration = Duration::from_secs(3661); // 1 hour, 1 minute, 1 second
+        assert_eq!(format_duration(duration), "01:01:01");
+    }
 
-async fn send_message(user: &mut GooseUser) -> TransactionResult {
-    let payload = serde_json::json!({
-        "room_id": "test-room",
-        "message": "test message"
-    });
+    
+    #[tokio::test]
+    async fn test_exponential_backoff() {
+        // Use interior mutability with RefCell to allow mutation in the closure
+        use std::cell::RefCell;
+        let counter = RefCell::new(0);
+        
+        let operation = || async {
+            *counter.borrow_mut() += 1;
+            if *counter.borrow() < 3 {
+                Err(anyhow::anyhow!("Test error"))
+            } else {
+                Ok(*counter.borrow())
+            }
+        };
 
-    let _response = user
-        .post_json("/webrtc/messages", &payload)
-        .await?
-        .response
-        .map_err(|e| Box::new(TransactionError::RequestError(e.to_string())))?;
+        let result = exponential_backoff(
+            operation,
+            5,
+            Duration::from_millis(1),
+        ).await;
 
-    Ok(())
-}
-
-impl From<reqwest::Error> for TransactionError {
-    fn from(error: reqwest::Error) -> Self {
-        TransactionError::RequestError(error.to_string())
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 3);
     }
 }

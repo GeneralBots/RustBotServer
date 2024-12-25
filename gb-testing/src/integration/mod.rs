@@ -29,12 +29,13 @@ impl IntegrationTest {
         // Start Redis
         let redis = docker.run(testcontainers::images::redis::Redis::default());
         
-        // Start Kafka
         let kafka = docker.run(testcontainers::images::kafka::Kafka::default());
+        
+        // Temporary placeholder for db_pool
+        let db_pool = unimplemented!("Database pool needs to be implemented");
 
         Self {
             docker,
-            db_pool: todo!(),
-    }
-}
+            db_pool,
+        }}
 }
