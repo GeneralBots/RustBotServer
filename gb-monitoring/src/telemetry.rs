@@ -12,8 +12,9 @@ pub enum TelemetryError {
     Init(String),
 }
 
+#[allow(dead_code)]
 pub struct Telemetry {
-    tracer: trace::Tracer,
+    tracer: trace::Tracer    
 }
 
 impl Telemetry {

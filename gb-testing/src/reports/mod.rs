@@ -57,7 +57,7 @@ impl TestReport {
         Ok(())
     }
 
-    pub fn save_html(&self, path: &str) -> anyhow::Result<()> {
+    pub fn save_html(&self, _path: &str) -> anyhow::Result<()> {
         // HTML report generation implementation
         Ok(())
     }

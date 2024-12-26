@@ -1,5 +1,5 @@
 use gb_core::{Result, Error};
-use redis::{Client, AsyncCommands, aio::PubSub};
+use redis::{Client, AsyncCommands};
 use serde::Serialize;
 use std::sync::Arc;
 use tracing::instrument;
@@ -97,7 +97,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(1);
 
         let pubsub_clone = redis_pubsub.clone();
-        let test_message_clone = test_message.clone();
+        
 
         tokio::spawn(async move {
             let handler = move |_channel: String, payload: String| {

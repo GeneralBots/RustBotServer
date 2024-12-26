@@ -1,7 +1,6 @@
 use gb_core::Result;
 
 use tracing::{error, instrument};
-use uuid::Uuid;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use std::collections::HashMap;
@@ -72,6 +71,7 @@ mod tests {
     use super::*;
     use gb_core::models::Message;
     use rstest::*;
+    use uuid::Uuid;
     use std::{sync::Arc, time::Duration};
     use tokio::sync::Mutex;
 

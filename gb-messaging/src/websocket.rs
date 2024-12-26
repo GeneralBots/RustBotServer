@@ -38,7 +38,7 @@ mod tests {
     use futures::StreamExt;
     use rstest::*;
     use serde::{Deserialize, Serialize};
-    use tokio_tungstenite::tungstenite::WebSocket;
+    
     use std::time::Duration;
     use tokio::net::TcpListener;
     use uuid::Uuid;

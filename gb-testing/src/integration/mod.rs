@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use testcontainers::clients::Cli;
 
 pub struct IntegrationTest {
-    docker: Cli,
+    _docker: Cli,
     pub db_pool: PgPool,
 }
 
@@ -24,18 +24,15 @@ impl IntegrationTest {
     pub fn new() -> Self {
         let docker = Cli::default();
         // Start PostgreSQL
-        let postgres = docker.run(testcontainers::images::postgres::Postgres::default());
+        let _postgres = docker.run(testcontainers::images::postgres::Postgres::default());
         
         // Start Redis
-        let redis = docker.run(testcontainers::images::redis::Redis::default());
+        let _redis = docker.run(testcontainers::images::redis::Redis::default());
         
-        let kafka = docker.run(testcontainers::images::kafka::Kafka::default());
+        let _kafka = docker.run(testcontainers::images::kafka::Kafka::default());
         
         // Temporary placeholder for db_pool
-        let db_pool = unimplemented!("Database pool needs to be implemented");
+        let _db_pool = unimplemented!("Database pool needs to be implemented");
 
-        Self {
-            docker,
-            db_pool,
-        }}
+        }
 }

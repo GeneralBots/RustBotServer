@@ -1,6 +1,6 @@
 use prometheus::{Registry, Counter, Gauge, Histogram, HistogramOpts};
-use std::sync::Arc;
 
+#[allow(dead_code)]
 pub struct TestMetrics {
     registry: Registry,
     request_count: Counter,

@@ -1,5 +1,4 @@
 use gb_core::{Error, Result};
-use gb_core::models::Customer;
 use tracing::{info, error};
 use axum::Router;
 use std::net::SocketAddr;
@@ -38,7 +37,7 @@ async fn initialize_bot_server() -> Result<axum::Router> {
 }
 
 fn init_logging() -> Result<()> {
-    use tracing_subscriber::{EnvFilter, fmt};
+    use tracing_subscriber::EnvFilter;
     
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info"));
@@ -70,6 +69,7 @@ async fn initialize_redis() -> Result<redis::Client> {
         .map_err(|e| Error::internal(e.to_string()))
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 struct AppState {
     db: sqlx::PgPool,

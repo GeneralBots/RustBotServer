@@ -4,9 +4,12 @@ use rdkafka::config::ClientConfig;
 use std::time::Duration;
 use serde::Serialize;
 
+#[allow(dead_code)]
 pub struct KafkaBroker {
     producer: FutureProducer,
+    // Stored for reconnection logic
     broker_address: String,
+    // Stored for consumer group management
     group_id: String,
 }
 
@@ -46,4 +49,5 @@ impl KafkaBroker {
 
         Ok(())
     }
+
 }

@@ -1,5 +1,5 @@
 use kube::{
-    api::{Api, DeleteParams, PostParams},
+    api::{Api, DeleteParams},
     Client,
 };
 use k8s_openapi::api::core::v1::Pod;

@@ -21,7 +21,7 @@ mod tests {
         let metrics = Metrics::new();
 
         // Initialize telemetry
-        let telemetry = Telemetry::new("test-service").await.unwrap();
+        Telemetry::new("test-service").await.unwrap();
 
         // Test logging with metrics
         info!(

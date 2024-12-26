@@ -8,7 +8,7 @@ pub struct TiKVStorage {
 
 impl TiKVStorage {
     pub async fn new(pd_endpoints: Vec<String>) -> Result<Self> {
-        let config = Config::default();
+        let _config = Config::default();
         let client = RawClient::new(pd_endpoints)
             .await
             .map_err(|e| Error::internal(format!("TiKV error: {}", e)))?;

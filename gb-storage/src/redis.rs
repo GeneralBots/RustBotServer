@@ -13,14 +13,16 @@ impl RedisStorage {
         let client = Client::open(url)
             .map_err(|e| Error::internal(format!("Redis error: {}", e)))?;
 
-        Ok(Self { client })
-    }
-
-    #[instrument(skip(self))]
+            Ok(Self { client })
+        }
+    
+        
+        #[allow(dependency_on_unit_never_type_fallback)]
+        #[instrument(skip(self))]
     pub async fn set<T: Serialize + std::fmt::Debug>(&self, key: &str, value: &T) -> Result<()> {
         let mut conn = self.client.get_connection()
             .map_err(|e| Error::internal(format!("Redis error: {}", e)))?;
-
+        
         let serialized = serde_json::to_string(value)
             .map_err(|e| Error::internal(format!("Serialization error: {}", e)))?;
 
@@ -57,6 +59,7 @@ impl RedisStorage {
             .map_err(|e| Error::internal(format!("Redis error: {}", e)))
     }
 
+    #[allow(dependency_on_unit_never_type_fallback)]
     #[instrument(skip(self))]
     pub async fn set_with_ttl<T: Serialize + std::fmt::Debug>(&self, key: &str, value: &T, ttl: Duration) -> Result<()> {
         let mut conn = self.client.get_connection()

@@ -4,8 +4,8 @@ use rdkafka::consumer::{StreamConsumer, Consumer};
 use rdkafka::ClientConfig;
 use std::time::Duration;
 use serde::Serialize;
-use super::kafka;
 
+#[allow(dead_code)]
 pub struct Kafka {
     broker_address: String,
     group_id: String,
@@ -69,8 +69,6 @@ mod tests {
     use tokio;
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
-    use std::future::Future;
-    use tokio::runtime::Runtime;
 
     #[derive(Debug, Serialize, Deserialize, PartialEq)]
     struct TestMessage {

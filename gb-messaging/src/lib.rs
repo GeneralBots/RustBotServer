@@ -22,8 +22,6 @@ mod tests {
     use uuid::Uuid;
     use std::sync::Arc;
     use redis::Client;
-    use tokio::sync::broadcast;
-    use std::collections::HashMap;
     
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
     struct TestMessage {

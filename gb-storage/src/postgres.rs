@@ -4,9 +4,9 @@ use gb_core::{
 };
 use sqlx::{PgPool, Row, postgres::PgRow};
 use std::sync::Arc;
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 
+#[allow(dead_code)]
 #[async_trait::async_trait]
 pub trait CustomerRepository: Send + Sync {
     async fn create(&self, customer: Customer) -> Result<Customer>;
@@ -194,7 +194,9 @@ impl PostgresCustomerRepository {
 mod tests {
     use super::*;
     use chrono::Utc;
+    use uuid::Uuid;
 
+    #[allow(dead_code)]
     fn create_test_customer() -> Customer {
         Customer {
             id: Uuid::new_v4(),
