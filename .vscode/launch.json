@@ -16,7 +16,7 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_LOG": "debug",
-                "DATABASE_URL": "postgresql://localhost:5432/gbdb",
+                "DATABASE_URL": "postgres://gbuser:gbpassword@localhost:5432/generalbots",
                 "REDIS_URL": "redis://localhost:6379"
             }
         },

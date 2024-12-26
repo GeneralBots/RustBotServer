@@ -2354,6 +2354,8 @@ dependencies = [
  "gb-core",
  "gb-messaging",
  "gb-monitoring",
+ "hyper 1.5.2",
+ "hyper-util",
  "redis 0.23.3",
  "rstest",
  "serde",

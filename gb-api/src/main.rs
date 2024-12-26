@@ -1,6 +1,8 @@
 use gb_core::{Error, Result};
 use gb_core::models::Customer;
 use tracing::{info, error};
+use axum::Router;
+use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -53,19 +55,19 @@ fn init_logging() -> Result<()> {
 
 async fn initialize_database() -> Result<sqlx::PgPool> {
     let database_url = std::env::var("DATABASE_URL")
-        .map_err(|_| Error::Configuration("DATABASE_URL not set".into()))?;
+        .map_err(|_| Error::internal("DATABASE_URL not set".to_string()))?;
 
     sqlx::PgPool::connect(&database_url)
         .await
-        .map_err(|e| Error::Database(e.to_string()))
+        .map_err(|e| Error::internal(e.to_string()))
 }
 
 async fn initialize_redis() -> Result<redis::Client> {
     let redis_url = std::env::var("REDIS_URL")
-        .map_err(|_| Error::Configuration("REDIS_URL not set".into()))?;
+        .map_err(|_| Error::internal("REDIS_URL not set".to_string()))?;
 
     redis::Client::open(redis_url)
-        .map_err(|e| Error::Cache(e.to_string()))
+        .map_err(|e| Error::internal(e.to_string()))
 }
 
 #[derive(Clone)]
@@ -74,14 +76,21 @@ struct AppState {
     redis: redis::Client,
 }
 
-async fn start_server(app: axum::Router) -> Result<()> {
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 3000));
+
+async fn start_server(app: Router) -> Result<()> {
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     info!("Starting server on {}", addr);
 
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .map_err(|e| Error::Server(e.to_string()))?;
-
-    Ok(())
+    match tokio::net::TcpListener::bind(addr).await {
+        Ok(listener) => {
+            info!("Listening on {}", addr);
+            axum::serve(listener, app)
+                .await
+                .map_err(|e| Error::internal(format!("Server error: {}", e)))
+        }
+        Err(e) => {
+            error!("Failed to bind to address: {}", e);
+            Err(Error::internal(format!("Failed to bind to address: {}", e)))
+        }
+    }
 }

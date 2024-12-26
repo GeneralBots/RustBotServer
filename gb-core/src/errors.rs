@@ -8,9 +8,13 @@ use serde_json::json;
         
 #[derive(Error, Debug)]
 pub enum ErrorKind {
+    
     #[error("Database error: {0}")]
     Database(String),
-    
+
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+        
     #[error("Redis error: {0}")]
     Redis(String),
     
@@ -40,6 +44,10 @@ pub enum ErrorKind {
 
     #[error("Messaging error: {0}")]
     Messaging(String),
+
+    #[error("API HTTP Server error: {0}")]
+    Server(String),
+
 }
 
 #[derive(Debug)]
