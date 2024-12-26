@@ -1,11 +1,14 @@
-use gb_core::Result;
+use gb_core::{Result, models::*};  // This will import both Message and MessageId
 
-use tracing::{error, instrument};
-use std::sync::Arc;
-use tokio::sync::broadcast;
+use gb_core::Error;
+use uuid::Uuid;
 use std::collections::HashMap;
-
+use tracing::instrument;
 use crate::MessageEnvelope;
+use tokio::sync::broadcast;  // Add this import
+use std::sync::Arc;
+use tracing::{error, info};  // Add error and info macros here
+
 
 pub struct MessageProcessor {
     tx: broadcast::Sender<MessageEnvelope>,
@@ -52,12 +55,32 @@ impl MessageProcessor {
     }
 
     #[instrument(skip(self))]
+    pub async fn add_message(&mut self, message: Message) -> Result<MessageId> {
+        let envelope = MessageEnvelope {
+            id: Uuid::new_v4(),
+            message,
+            metadata: HashMap::new(),
+        };
+
+        self.tx.send(envelope.clone())
+            .map_err(|e| Error::internal(format!("Failed to queue message: {}", e)))?;
+
+        // Start processing immediately
+        if let Some(handler) = self.handlers.get(&envelope.message.kind) {
+            handler(envelope.clone())
+                .map_err(|e| Error::internal(format!("Handler error: {}", e)))?;
+        }
+
+        Ok(MessageId(envelope.id))
+    }
+    #[instrument(skip(self))]
     pub async fn process_messages(&mut self) -> Result<()> {
         while let Ok(envelope) = self.rx.recv().await {
             if let Some(handler) = self.handlers.get(&envelope.message.kind) {
                 if let Err(e) = handler(envelope.clone()) {
                     error!("Handler error for message {}: {}", envelope.id, e);
                 }
+                    tracing::info!("Processing message: {:?}", &envelope.message.id);
             } else {
                 error!("No handler registered for message kind: {}", envelope.message.kind);
             }

@@ -60,8 +60,8 @@ pub struct Message {
     pub kind: String,
     pub content: String,
     pub metadata: JsonValue,
-    pub created_at: DateTime<Utc>,
-    pub shard_key: i32,
+    pub created_at: Option<DateTime<Utc>>,
+    pub shard_key: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

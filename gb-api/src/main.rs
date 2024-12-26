@@ -1,7 +1,7 @@
 use gb_core::{Error, Result};
 use tracing::{info, error};
-use axum::Router;
 use std::net::SocketAddr;
+use gb_messaging::MessageProcessor;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -16,21 +16,13 @@ async fn main() -> Result<()> {
 }
 
 async fn initialize_bot_server() -> Result<axum::Router> {
-    info!("Initializing General Bots...");
+    info!("Initializing General Bots server...");
 
-    // Initialize database connections
-    let db_pool = initialize_database().await?;
+    // Initialize the MessageProcessor
+    let message_processor = MessageProcessor::new();
     
-    // Initialize Redis
-    let redis_client = initialize_redis().await?;
-    
-    // Build the Axum router with our routes
-    let app = axum::Router::new()
-        .with_state(AppState {
-            db: db_pool,
-            redis: redis_client,
-        })
-        // Add your route handlers here
+    // Build the Axum router using our router module
+    let app = gb_api::create_router(message_processor)
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
     Ok(app)
@@ -77,8 +69,8 @@ struct AppState {
 }
 
 
-async fn start_server(app: Router) -> Result<()> {
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+async fn start_server(app: axum::Router) -> Result<()> {
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
     info!("Starting server on {}", addr);
 
     match tokio::net::TcpListener::bind(addr).await {
@@ -91,6 +83,7 @@ async fn start_server(app: Router) -> Result<()> {
         Err(e) => {
             error!("Failed to bind to address: {}", e);
             Err(Error::internal(format!("Failed to bind to address: {}", e)))
-        }
+       }
+      
     }
 }

@@ -70,16 +70,18 @@ async fn send_message(
     State(state): State<Arc<ApiState>>,
     Json(message): Json<Message>,
 ) -> Result<Json<MessageId>> {
+    // Clone the message before using it in envelope
     let envelope = MessageEnvelope {
         id: Uuid::new_v4(),
-        message,
+        message: message.clone(),  // Clone here
         metadata: HashMap::new(),
     };
 
     let mut processor = state.message_processor.lock().await;
-    processor.process_messages().await
-        .map_err(|e| Error::internal(format!("Failed to process message: {}", e)))?;
-
+    processor.add_message(message)  // Use original message here
+        .await
+        .map_err(|e| Error::internal(format!("Failed to add message: {}", e)))?;
+    
     Ok(Json(MessageId(envelope.id)))
 }
 
