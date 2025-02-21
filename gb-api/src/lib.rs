@@ -42,8 +42,8 @@ mod tests {
             kind: "test".to_string(),
             content: "integration test".to_string(),
             metadata: serde_json::Value::Object(serde_json::Map::new()),
-            created_at: chrono::Utc::now(),
-            shard_key: 0,
+            created_at: Some(chrono::Utc::now()),
+            shard_key: Some(0),
         };
 
         let response = app

@@ -1,12 +1,10 @@
 mod kafka;
-mod rabbitmq;
 mod redis_pubsub;
 mod websocket;
 mod processor;
 pub mod models;
 
 pub use kafka::Kafka;
-pub use rabbitmq::RabbitMQ;
 pub use redis_pubsub::RedisPubSub;
 pub use websocket::WebSocketClient;
 pub use processor::MessageProcessor;
@@ -38,10 +36,6 @@ mod tests {
                 let redis_client = Client::open("redis://localhost")
                     .expect("Failed to create Redis client");
         let redis = RedisPubSub::new(Arc::new(redis_client));
-        let rabbitmq = RabbitMQ::new("amqp://localhost:5672")
-            .await
-            .unwrap();
-
         let mut websocket = WebSocketClient::connect("ws://localhost:8080")
             .await
             .unwrap();
@@ -56,10 +50,6 @@ mod tests {
             .unwrap();
 
         redis.publish("test-channel", &test_message)
-            .await
-            .unwrap();
-
-        rabbitmq.publish("", "test.key", &test_message)
             .await
             .unwrap();
 
@@ -83,8 +73,8 @@ mod tests {
             kind: "test".to_string(),
             content: "test content".to_string(),
             metadata: serde_json::Value::Object(serde_json::Map::new()),
-            created_at: chrono::Utc::now(),
-            shard_key: 0,
+            created_at: Some(chrono::Utc::now()),
+            shard_key: Some(0),
         };
 
         let envelope = MessageEnvelope {
