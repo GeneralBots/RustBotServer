@@ -25,7 +25,10 @@ pub fn create_router(message_processor: MessageProcessor) -> Router {
         message_processor: Mutex::new(message_processor),
     });
    Router::new()
-            // File & Document Management
+
+
+
+   // File & Document Management
             .route("/files/upload", post(upload_file))
             .route("/files/download", post(download))
             .route("/files/copy", post(copy_file))
@@ -49,7 +52,7 @@ pub fn create_router(message_processor: MessageProcessor) -> Router {
             .route("/files/sync/start", post(start_sync))
             .route("/files/sync/stop", post(stop_sync))
     
-            // Document Processing
+full ode bucket is abstrctd path variable, src, dest, full file manager acessible via actixweb ALL methods no excluses, inline funcition params, s3 api inside, all methodos, full code.            // Document Processing
             .route("/docs/merge", post(merge_documents))
             .route("/docs/convert", post(convert_document))
             .route("/docs/fill", post(fill_document))
@@ -73,26 +76,6 @@ pub fn create_router(message_processor: MessageProcessor) -> Router {
             .route("/groups/join/reject", post(reject_join_request))
             .route("/groups/invites/send", post(send_group_invite))
             .route("/groups/invites/list", get(list_group_invites))
-    
-            // Teams & Projects
-            .route("/teams/create", post(create_team))
-            .route("/teams/update", put(update_team))
-            .route("/teams/delete", delete(delete_team))
-            .route("/teams/list", get(get_teams))
-            .route("/teams/search", post(search_teams))
-            .route("/teams/members", get(get_team_members))
-            .route("/teams/members/add", post(add_team_member))
-            .route("/teams/members/remove", post(remove_team_member))
-            .route("/teams/roles", post(set_team_roles))
-            .route("/teams/permissions", post(set_team_permissions))
-            .route("/teams/settings", post(update_team_settings))
-            .route("/teams/analytics", get(get_team_analytics))
-            .route("/teams/projects/create", post(create_project))
-            .route("/teams/projects/list", get(get_projects))
-            .route("/teams/projects/update", put(update_project))
-            .route("/teams/projects/delete", delete(delete_project))
-            .route("/teams/reports/generate", post(generate_team_report))
-            .route("/teams/activity", get(get_team_activity))
     
             // Conversations & Real-time Communication
             .route("/conversations/create", post(create_conversation))
@@ -183,20 +166,6 @@ pub fn create_router(message_processor: MessageProcessor) -> Router {
             .route("/storage/archive", post(archive_data))
             .route("/storage/metrics", get(get_storage_metrics))
     
-            // Automation & Workflows
-            .route("/automation/workflow/create", post(create_workflow))
-            .route("/automation/workflow/update", put(update_workflow))
-            .route("/automation/workflow/delete", delete(delete_workflow))
-            .route("/automation/workflow/execute", post(execute_workflow))
-            .route("/automation/workflow/status", get(get_workflow_status))
-            .route("/automation/triggers/create", post(create_trigger))
-            .route("/automation/triggers/list", get(list_triggers))
-            .route("/automation/schedule/create", post(create_schedule))
-            .route("/automation/schedule/update", put(update_schedule))
-            .route("/automation/actions/create", post(create_action))
-            .route("/automation/actions/execute", post(execute_action))
-            .route("/automation/rules/create", post(create_rule))
-            .route("/automation/rules/evaluate", post(evaluate_rules))
     
             // Analytics & Reporting
             .route("/analytics/dashboard", get(get_dashboard_data))
@@ -220,16 +189,6 @@ pub fn create_router(message_processor: MessageProcessor) -> Router {
             .route("/admin/roles/manage", post(manage_system_roles))
             .route("/admin/quotas/manage", post(manage_quotas))
             .route("/admin/licenses/manage", post(manage_licenses))
-    
-            // Integration & External Services
-            .route("/integrations/list", get(list_integrations))
-            .route("/integrations/install", post(install_integration))
-            .route("/integrations/configure", post(configure_integration))
-            .route("/integrations/uninstall", post(uninstall_integration))
-            .route("/integrations/status", get(get_integration_status))
-            .route("/integrations/sync", post(sync_integration_data))
-            .route("/integrations/webhook/create", post(create_webhook))
-            .route("/integrations/webhook/manage", post(manage_webhooks))
     
             // AI & Machine Learning
             .route("/ai/analyze/text", post(analyze_text))

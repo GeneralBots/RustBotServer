@@ -9,6 +9,7 @@ license = { workspace = true }
 gb-core = { path = "../gb-core" }
 gb-messaging = { path = "../gb-messaging" }
 gb-monitoring = { path = "../gb-monitoring" }
+gb-file = {path = "../gb-file" }
 tokio = { version = "1.0", features = ["full", "macros", "rt-multi-thread"] }  # Add these features
 axum = { version = "0.7.9", features = ["ws", "multipart", "macros"] }
 serde= { workspace = true }
