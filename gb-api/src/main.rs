@@ -3,6 +3,17 @@ use tracing::{info, error};
 use std::net::SocketAddr;
 use gb_messaging::MessageProcessor;
 
+
+#[allow(dead_code)]
+#[derive(Clone)]
+struct AppState {
+    db: sqlx::PgPool,
+    redis: redis::Client,
+    message_processor: MessageProcessor,
+    customer: PostgresCustomerRepository,
+
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging first
@@ -20,9 +31,12 @@ async fn initialize_bot_server() -> Result<axum::Router> {
 
     // Initialize the MessageProcessor
     let message_processor = MessageProcessor::new();
-    
+    let state = AppState::new();
+    state.repo = PostgresCustomerRepository::new(Arc::new(pool));
+   
+
     // Build the Axum router using our router module
-    let app = gb_api::create_router(message_processor)
+    let app = gb_api::create_router(state)
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
     Ok(app)
@@ -61,12 +75,6 @@ async fn initialize_redis() -> Result<redis::Client> {
         .map_err(|e| Error::internal(e.to_string()))
 }
 
-#[allow(dead_code)]
-#[derive(Clone)]
-struct AppState {
-    db: sqlx::PgPool,
-    redis: redis::Client,
-}
 
 
 async fn start_server(app: axum::Router) -> Result<()> {

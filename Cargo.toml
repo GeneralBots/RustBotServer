@@ -4,6 +4,7 @@ members = [
     "gb-core",           # Core domain models and traits
     "gb-api",            # API layer and server implementation
     "gb-media",          # Media processing and WebRTC handling
+
     "gb-messaging",      # Message queue and real-time communication
     "gb-storage",        # Database and storage implementations
     "gb-monitoring",     # Metrics, logging and monitoring

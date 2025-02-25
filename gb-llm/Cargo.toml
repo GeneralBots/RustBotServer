@@ -1,5 +1,5 @@
 [package]
-name = "gb-file"
+name = "gb-llm"
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
@@ -10,10 +10,9 @@ gb-core = { path = "../gb-core" }
 async-trait= { workspace = true }
 tokio= { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-thiserror= { workspace = true }
+serde_json = "1.0"thiserror= { workspace = true }
 tracing= { workspace = true }
-minio = "0.1.0"
+minio-rs = "0.1"
 
 [dev-dependencies]
 rstest= { workspace = true }
