@@ -1,22 +1,9 @@
-use gb_core::{Error, Result};
-use tracing::{info, error};
-use std::{net::SocketAddr, sync::Arc};
-use sqlx::PgPool;
-use redis::Client as RedisClient;
-use minio::MinioClient;
-use gb_api::PostgresCustomerRepository;
-use gb_messaging::MessageProcessor;
-use axum::Router;
-use tower_http::trace::TraceLayer;
-
-use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpServer};
-use dotenv::dotenv;
 use tracing_subscriber::fmt::format::FmtSpan;
 
-use crate::config::AppConfig;
-use crate::db::{init_kafka, init_minio, init_postgres, init_redis, init_zitadel};
-use crate::router::*;
+use gb_core::config::AppConfig;
+use gb_core::db::{init_kafka, init_minio, init_postgres, init_redis, init_zitadel};
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -59,7 +46,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Compress::default())
             .wrap(cors)
             .app_data(app_state.clone())
-            .configure(filesrouter::files_router_configure)
+            .configure(files_router_configure)
     })
     .bind((config.server.host.clone(), config.server.port))?
     .run()

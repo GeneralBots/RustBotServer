@@ -1,10 +1,7 @@
 use gb_core::{Error, Result};
-use image::{DynamicImage, ImageOutputFormat, Rgba};
+use image::{DynamicImage, Rgba};
 use imageproc::drawing::draw_text_mut;
 use rusttype::{Font, Scale};
-use std::io::Cursor;
-use tempfile::NamedTempFile;
-use std::io::Write;
 use std::fs;
 
 
@@ -15,28 +12,7 @@ impl ImageProcessor {
         Self
     }
 
-    pub async fn extract_text(&self, image: &DynamicImage) -> Result<String> {
-        // Create a temporary file
-        let mut temp_file = NamedTempFile::new()
-            .map_err(|e| Error::internal(format!("Failed to create temp file: {}", e)))?;
-        
-        // Convert image to PNG and write to temp file
-        let mut cursor = Cursor::new(Vec::new());
-        image.write_to(&mut cursor, ImageOutputFormat::Png)
-            .map_err(|e| Error::internal(format!("Failed to encode image: {}", e)))?;
-        
-        temp_file.write_all(&cursor.into_inner())
-            .map_err(|e| Error::internal(format!("Failed to write to temp file: {}", e)))?;
-
-       
-        api.set_image(temp_file.path().to_str().unwrap())
-            .map_err(|e| Error::internal(format!("Failed to set image: {}", e)))?
-            .recognize()
-            .map_err(|e| Error::internal(format!("Failed to recognize text: {}", e)))?
-            .get_text()
-            .map_err(|e| Error::internal(format!("Failed to get text: {}", e)))
-    }
-
+    
 
     pub fn resize(&self, image: &DynamicImage, width: u32, height: u32) -> DynamicImage {
         image.resize(width, height, image::imageops::FilterType::Lanczos3)

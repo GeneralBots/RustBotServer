@@ -1,22 +1,20 @@
 use anyhow::Result;
-use minio_rs::client::{Client as MinioClient, ClientBuilder as MinioClientBuilder};
 use rdkafka::ClientConfig;
 use rdkafka::producer::FutureProducer;
 use redis::aio::ConnectionManager as RedisConnectionManager;
 use sqlx::postgres::{PgPoolOptions, PgPool};
-use zitadel::api::v1::auth::AuthServiceClient;
-
+use zitadel::api::clients::ClientBuilder;
+use zitadel::api::zitadel::auth::v1::auth_service_client::AuthServiceClient;
+use minio::s3::creds::StaticProvider;
+use minio::s3::http::BaseUrl;
+use minio::s3::client::{Client as MinioClient, ClientBuilder as MinioClientBuilder};
+use std::str::FromStr;
 use crate::config::AppConfig;
 
 pub async fn init_postgres(config: &AppConfig) -> Result<PgPool> {
     let pool = PgPoolOptions::new()
         .max_connections(config.database.max_connections)
         .connect(&config.database.url)
-        .await?;
-    
-    // Run migrations
-    sqlx::migrate!("./migrations")
-        .run(&pool)
         .await?;
     
     Ok(pool)
@@ -39,27 +37,55 @@ pub async fn init_kafka(config: &AppConfig) -> Result<FutureProducer> {
 }
 
 pub async fn init_zitadel(config: &AppConfig) -> Result<AuthServiceClient<tonic::transport::Channel>> {
-    let channel = tonic::transport::Channel::from_shared(format!("https://{}", config.zitadel.domain))?
-        .connect()
-        .await?;
     
-    let client = AuthServiceClient::new(channel);
+    let mut client = ClientBuilder::new(&config.zitadel.domain)
     
+    .with_access_token(&"test")
+    .build_auth_client()
+    .await?;
+
+
     Ok(client)
 }
 
-pub async fn init_minio(config: &AppConfig) -> Result<MinioClient> {
-    let client = MinioClientBuilder::new()
-        .endpoint(&config.minio.endpoint)
-        .access_key(&config.minio.access_key)
-        .secret_key(&config.minio.secret_key)
-        .ssl(config.minio.use_ssl)
+
+pub async fn init_minio(config: &AppConfig) -> Result<MinioClient, Box<dyn std::error::Error + Send + Sync>> {
+    // Construct the base URL
+    let base_url = format!("https://{}", config.minio.endpoint);
+    let base_url = BaseUrl::from_str(&base_url)?;
+
+    // Create credentials provider
+    let credentials = StaticProvider::new(
+        &config.minio.access_key,
+        &config.minio.secret_key,
+        None,
+    );
+
+    // Build the MinIO client
+    let client = MinioClientBuilder::new(base_url.clone())
+        .provider(Some(Box::new(credentials)))
+        //.secure(config.minio.use_ssl)
         .build()?;
-    
-    // Ensure bucket exists
-    if !client.bucket_exists(&config.minio.bucket).await? {
-        client.make_bucket(&config.minio.bucket, None).await?;
-    }
-    
+
     Ok(client)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    

@@ -27,6 +27,7 @@ hyper = { workspace = true, features = ["server"] }
 hyper-util = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true, features = ["cors", "trace"] }
+actix-web = { workspace = true }
 
 [dev-dependencies]
 rstest = { workspace = true }

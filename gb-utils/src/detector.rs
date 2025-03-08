@@ -1,18 +1,9 @@
 use gb_core::{Result, Error};
-use mime_guess::{from_path, mime};
-use std::path::Path;
 use tracing::instrument;
 
 pub struct FileTypeDetector;
 
 impl FileTypeDetector {
-    #[instrument]
-    pub fn detect_mime_type(path: &Path) -> Result<mime::Mime> {
-        from_path(path)
-            .first_or_octet_stream()
-            .to_owned()
-            .into()
-    }
 
     #[instrument(skip(data))]
     pub fn detect_from_bytes(data: &[u8]) -> Result<FileType> {
@@ -59,16 +50,8 @@ pub enum FileType {
 mod tests {
     use super::*;
     use rstest::*;
-    use std::path::PathBuf;
+    
 
-    #[rstest]
-    fn test_detect_mime_type() -> Result<()> {
-        let path = PathBuf::from("test.pdf");
-        let mime = FileTypeDetector::detect_mime_type(&path)?;
-        assert_eq!(mime.type_(), "application");
-        assert_eq!(mime.subtype(), "pdf");
-        Ok(())
-    }
 
     #[rstest]
     fn test_detect_from_bytes() -> Result<()> {

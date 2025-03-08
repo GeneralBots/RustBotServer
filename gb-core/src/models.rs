@@ -1,17 +1,15 @@
 use chrono::{DateTime, Utc};
-use minio_rs::client::Client as MinioClient;
+use minio::s3::client::Client as MinioClient;
 use rdkafka::producer::FutureProducer;
 use redis::aio::ConnectionManager as RedisConnectionManager;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-use zitadel::api::v1::auth::AuthServiceClient;
-use crate::config::AppConfig;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use zitadel::api::zitadel::auth::v1::auth_service_client::AuthServiceClient;
 use serde_json::Value as JsonValue;
 use std::str::FromStr;
-use uuid::Uuid;
+
+use crate::config::AppConfig;
 
 #[derive(Debug)]
 pub struct CoreError(pub String);
@@ -251,17 +249,6 @@ pub struct AppState {
     pub minio_client: MinioClient,
 }
 
-// User models
-#[derive(Debug, Serialize, Deserialize)]
-pub struct User {
-    pub id: Uuid,
-    pub external_id: String, // Zitadel user ID
-    pub username: String,
-    pub email: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
 // File models
 #[derive(Debug, Serialize, Deserialize)]
 pub struct File {
@@ -301,16 +288,7 @@ pub struct Conversation {
 pub struct ConversationMember {
     pub conversation_id: Uuid,
     pub user_id: Uuid,
-    pub joined_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Message {
-    pub id: Uuid,
-    pub conversation_id: Uuid,
-    pub user_id: Uuid,
-    pub content: String,
-    pub created_at: DateTime<Utc>,
+    pub joined_at: DateTime<Utc>
 }
 
 // Calendar models

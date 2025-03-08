@@ -18,7 +18,12 @@ axum = { version = "0.7", features = ["json"] }
 serde_json = "1.0"
 sqlx = { workspace = true }
 redis = { workspace = true }
-
+minio = { workspace = true }
+zitadel = { workspace = true }
+rdkafka = { workspace = true }
+tonic = { workspace = true }
+actix-web ={ workspace = true }
+anyhow = { workspace = true }
 
 [dev-dependencies]
 mockall= { workspace = true }
