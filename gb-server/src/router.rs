@@ -16,11 +16,8 @@ use tracing::{instrument, error};
 use uuid::Uuid;
 use futures_util::StreamExt;
 
-pub struct ApiState {
-    pub message_processor: Mutex<MessageProcessor>,
-}
 
-pub fn create_router(message_processor: MessageProcessor) -> Router {
+pub fn create_router(message_processor: AppState) -> Router {
     let state = Arc::new(ApiState {
         message_processor: Mutex::new(message_processor),
     });
@@ -52,7 +49,8 @@ pub fn create_router(message_processor: MessageProcessor) -> Router {
             .route("/files/sync/start", post(start_sync))
             .route("/files/sync/stop", post(stop_sync))
     
-full ode bucket is abstrctd path variable, src, dest, full file manager acessible via actixweb ALL methods no excluses, inline funcition params, s3 api inside, all methodos, full code.            // Document Processing
+            // full ode bucket is abstrctd path variable, src, dest, full file manager acessible via actixweb ALL methods no excluses, inline funcition params, s3 api inside, all methodos, full code.            // Document Processing
+            
             .route("/docs/merge", post(merge_documents))
             .route("/docs/convert", post(convert_document))
             .route("/docs/fill", post(fill_document))

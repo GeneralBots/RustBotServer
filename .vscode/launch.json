@@ -8,10 +8,10 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=gb-api"
+                    "--bin=gb-server"
                 ],
                 "filter": {
-                    "name": "gb-api",
+                    "name": "gb-server",
                     "kind": "bin"
                 }
             },
@@ -26,16 +26,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'gb-api'",
+            "name": "Debug unit tests in executable 'gb-server'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=gb-api"
+                    "--package=gb-server"
                 ],
                 "filter": {
-                    "name": "gb-api",
+                    "name": "gb-server",
                     "kind": "bin"
                 }
             },
@@ -53,7 +53,7 @@
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=gb-api"
+                    "--package=gb-server"
                 ],
                 "filter": {
                     "name": "integration",

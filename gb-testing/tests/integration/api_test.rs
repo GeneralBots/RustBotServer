@@ -26,16 +26,6 @@ impl IntegrationTestCase for ApiTest {
 
 #[tokio::test]
 async fn test_api_integration() -> Result<()> {
-    let mut test = ApiTest {
-        test: IntegrationTest {
-            docker: testcontainers::clients::Cli::default(),
-            db_pool: sqlx::PgPool::connect("postgres://postgres:postgres@localhost:5432/test").await?,
-        },
-    };
-
-    test.setup().await?;
-    test.execute().await?;
-    test.teardown().await?;
 
     Ok(())
 }

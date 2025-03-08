@@ -552,7 +552,7 @@ Dependencies original, migrate everything to workspace.dependencies
 migrate them to rust compatible, 
 
 - do not skip items, migrate everything, in way better, in your interpretation.
-- use kubernetes and create environment configuration for everything and ingress to have several server nodes if eeed automatically 
+- reate environment configuration for everything and ingress to have several server nodes if eeed automatically 
 - I NEED FULL CODE SOLUTION IN PROFESSIONAL TESTABLE RUST CODE: if you need split answer in several parts, but provide ENTIRE CODE. Complete working balenced aserver.  IMPORTANTE: Generate the project in a .sh shell script output with cat, of entire code base to be restored, no placeholder neither TODOS. 
 - VERY IMPORNTANT: DO NOT put things like  // Add other system routes... you should WRITE ACUTAL CODE
 - Need tests for every line of code written.

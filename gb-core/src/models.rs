@@ -1,6 +1,12 @@
-//! Core domain models for the general-bots system
-//! File: gb-core/src/models.rs
-
+use chrono::{DateTime, Utc};
+use minio_rs::client::Client as MinioClient;
+use rdkafka::producer::FutureProducer;
+use redis::aio::ConnectionManager as RedisConnectionManager;
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use uuid::Uuid;
+use zitadel::api::v1::auth::AuthServiceClient;
+use crate::config::AppConfig;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -232,4 +238,184 @@ pub struct FileInfo {
     pub size: usize,
     pub url: String,
     pub created_at: DateTime<Utc>,
+}
+
+
+// App state shared across all handlers
+pub struct AppState {
+    pub config: AppConfig,
+    pub db_pool: PgPool,
+    pub redis_pool: RedisConnectionManager,
+    pub kafka_producer: FutureProducer,
+    pub zitadel_client: AuthServiceClient<tonic::transport::Channel>,
+    pub minio_client: MinioClient,
+}
+
+// User models
+#[derive(Debug, Serialize, Deserialize)]
+pub struct User {
+    pub id: Uuid,
+    pub external_id: String, // Zitadel user ID
+    pub username: String,
+    pub email: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// File models
+#[derive(Debug, Serialize, Deserialize)]
+pub struct File {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub folder_id: Option<Uuid>,
+    pub name: String,
+    pub path: String,
+    pub mime_type: String,
+    pub size: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Folder {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub name: String,
+    pub path: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// Conversation models
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Conversation {
+    pub id: Uuid,
+    pub name: String,
+    pub created_by: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConversationMember {
+    pub conversation_id: Uuid,
+    pub user_id: Uuid,
+    pub joined_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Message {
+    pub id: Uuid,
+    pub conversation_id: Uuid,
+    pub user_id: Uuid,
+    pub content: String,
+    pub created_at: DateTime<Utc>,
+}
+
+// Calendar models
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CalendarEvent {
+    pub id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub location: Option<String>,
+    pub start_time: DateTime<Utc>,
+    pub end_time: DateTime<Utc>,
+    pub user_id: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// Task models
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Task {
+    pub id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub due_date: Option<DateTime<Utc>>,
+    pub status: TaskStatus,
+    pub priority: TaskPriority,
+    pub user_id: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum TaskStatus {
+    Pending,
+    InProgress,
+    Completed,
+    Cancelled,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum TaskPriority {
+    Low,
+    Medium,
+    High,
+    Urgent,
+}
+
+// Response models
+#[derive(Debug, Serialize)]
+pub struct ApiResponse<T> {
+    pub success: bool,
+    pub message: Option<String>,
+    pub data: Option<T>,
+}
+
+// Error models
+#[derive(Debug, thiserror::Error)]
+pub enum AppError {
+    #[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
+    
+    #[error("Redis error: {0}")]
+    Redis(#[from] redis::RedisError),
+    
+    #[error("Kafka error: {0}")]
+    Kafka(String),
+    
+    #[error("Zitadel error: {0}")]
+    Zitadel(#[from] tonic::Status),
+    
+    #[error("Minio error: {0}")]
+    Minio(String),
+    
+    #[error("Validation error: {0}")]
+    Validation(String),
+    
+    #[error("Not found: {0}")]
+    NotFound(String),
+    
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+    
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+    
+    #[error("Internal server error: {0}")]
+    Internal(String),
+}
+
+impl actix_web::ResponseError for AppError {
+    fn error_response(&self) -> actix_web::HttpResponse {
+        let (status, error_message) = match self {
+            AppError::Validation(_) => (actix_web::http::StatusCode::BAD_REQUEST, self.to_string()),
+            AppError::NotFound(_) => (actix_web::http::StatusCode::NOT_FOUND, self.to_string()),
+            AppError::Unauthorized(_) => (actix_web::http::StatusCode::UNAUTHORIZED, self.to_string()),
+            AppError::Forbidden(_) => (actix_web::http::StatusCode::FORBIDDEN, self.to_string()),
+            _ => (
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            ),
+        };
+
+        actix_web::HttpResponse::build(status).json(ApiResponse::<()> {
+            success: false,
+            message: Some(error_message),
+            data: None,
+        })
+    }
 }

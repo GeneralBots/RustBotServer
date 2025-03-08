@@ -14,7 +14,7 @@ GB6 is a billion-scale real-time communication platform integrating advanced bot
 - Petabyte-scale storage
 
 ### Core Services
-- **API Service** (gb-api)
+- **API Service** (gb-server)
   - Axum-based REST & WebSocket
   - Multi-tenant request routing
   - Authentication & Authorization
@@ -61,11 +61,6 @@ GB6 is a billion-scale real-time communication platform integrating advanced bot
 - Kafka 3.0+
 - GStreamer
 
-### Kubernetes Setup
-```bash
-# Initialize cluster
-./setup-k8s.sh
-
 # Deploy platform
 ./deploy.sh
 ```
@@ -79,7 +74,7 @@ cargo build --workspace
 cargo test --workspace
 
 # Start API service
-cargo run -p gb-api
+cargo run -p gb-server
 ```
 
 ## 📊 Monitoring & Operations
@@ -115,13 +110,12 @@ cargo run -p gb-api
 ### Project Structure
 ```
 general-bots/
-├── gb-api/          # API service
+├── gb-server/          # API service
 ├── gb-core/         # Core functionality
 ├── gb-media/        # Media processing
 ├── gb-messaging/    # Message brokers
 ├── gb-storage/      # Data storage
 ├── gb-utils/        # Utilities
-├── k8s/             # Kubernetes configs
 └── migrations/      # DB migrations
 ```
 
@@ -282,6 +276,219 @@ Licensed under terms specified in workspace configuration.
 13. **Hugging Face Transformers (Rust/Go bindings)**: LLM integration and fine-tuning.
 14. **Kubernetes (Go)**: Container orchestration for scalable deployments.
 15. **Matrix (Rust)**: Real-time communication and collaboration.
+
+# API:
+
+## **File & Document Management**
+/files/upload  
+/files/download  
+/files/copy  
+/files/move  
+/files/delete  
+/files/getContents  
+/files/save  
+/files/createFolder  
+/files/shareFolder  
+/files/dirFolder  
+/files/list  
+/files/search  
+/files/recent  
+/files/favorite  
+/files/versions  
+/files/restore  
+/files/permissions  
+/files/quota  
+/files/shared  
+/files/sync/status  
+/files/sync/start  
+/files/sync/stop  
+
+---
+
+### **Document Processing**
+/docs/merge  
+/docs/convert  
+/docs/fill  
+/docs/export  
+/docs/import  
+
+---
+
+### **Groups & Organizations**
+/groups/create  
+/groups/update  
+/groups/delete  
+/groups/list  
+/groups/search  
+/groups/members  
+/groups/members/add  
+/groups/members/remove  
+/groups/permissions  
+/groups/settings  
+/groups/analytics  
+/groups/join/request  
+/groups/join/approve  
+/groups/join/reject  
+/groups/invites/send  
+/groups/invites/list  
+
+---
+
+### **Conversations & Real-time Communication**
+/conversations/create  
+/conversations/join  
+/conversations/leave  
+/conversations/members  
+/conversations/messages  
+/conversations/messages/send  
+/conversations/messages/edit  
+/conversations/messages/delete  
+/conversations/messages/react  
+/conversations/messages/pin  
+/conversations/messages/search  
+/conversations/calls/start  
+/conversations/calls/join  
+/conversations/calls/leave  
+/conversations/calls/mute  
+/conversations/calls/unmute  
+/conversations/screen/share  
+/conversations/screen/stop  
+/conversations/recording/start  
+/conversations/recording/stop  
+/conversations/whiteboard/create  
+/conversations/whiteboard/collaborate  
+
+---
+
+### **Communication Services**
+/comm/email/send  
+/comm/email/template  
+/comm/email/schedule  
+/comm/email/cancel  
+/comm/sms/send  
+/comm/sms/bulk  
+/comm/notifications/send  
+/comm/notifications/preferences  
+/comm/broadcast/send  
+/comm/contacts/import  
+/comm/contacts/export  
+/comm/contacts/sync  
+/comm/contacts/groups  
+
+---
+
+### **User Management & Authentication**
+/users/create  
+/users/update  
+/users/delete  
+/users/list  
+/users/search  
+/users/profile  
+/users/profile/update  
+/users/settings  
+/users/permissions  
+/users/roles  
+/users/status  
+/users/presence  
+/users/activity  
+/users/security/2fa/enable  
+/users/security/2fa/disable  
+/users/security/devices  
+/users/security/sessions  
+/users/notifications/settings  
+
+---
+
+### **Calendar & Task Management**
+/calendar/events/create  
+/calendar/events/update  
+/calendar/events/delete  
+/calendar/events/list  
+/calendar/events/search  
+/calendar/availability/check  
+/calendar/schedule/meeting  
+/calendar/reminders/set  
+/tasks/create  
+/tasks/update  
+/tasks/delete  
+/tasks/list  
+/tasks/assign  
+/tasks/status/update  
+/tasks/priority/set  
+/tasks/dependencies/set  
+
+---
+
+### **Storage & Data Management**
+/storage/save  
+/storage/batch  
+/storage/json  
+/storage/delete  
+/storage/quota/check  
+/storage/cleanup  
+/storage/backup/create  
+/storage/backup/restore  
+/storage/archive  
+/storage/metrics  
+
+---
+
+### **Analytics & Reporting**
+/analytics/dashboard  
+/analytics/reports/generate  
+/analytics/reports/schedule  
+/analytics/metrics/collect  
+/analytics/insights/generate  
+/analytics/trends/analyze  
+/analytics/export  
+
+---
+
+### **System & Administration**
+/admin/system/status  
+/admin/system/metrics  
+/admin/logs/view  
+/admin/logs/export  
+/admin/config/update  
+/admin/maintenance/schedule  
+/admin/backup/create  
+/admin/backup/restore  
+/admin/users/manage  
+/admin/roles/manage  
+/admin/quotas/manage  
+/admin/licenses/manage  
+
+---
+
+### **AI & Machine Learning**
+/ai/analyze/text  
+/ai/analyze/image  
+/ai/generate/text  
+/ai/generate/image  
+/ai/translate  
+/ai/summarize  
+/ai/recommend  
+/ai/train/model  
+/ai/predict  
+
+---
+
+### **Security & Compliance**
+/security/audit/logs  
+/security/compliance/check  
+/security/threats/scan  
+/security/access/review  
+/security/encryption/manage  
+/security/certificates/manage  
+
+---
+
+### **Health & Monitoring**
+/health  
+/health/detailed  
+/monitoring/status  
+/monitoring/alerts  
+/monitoring/metrics  
 
 
 Built with ❤️ from Brazil, using Rust for maximum performance and reliability.

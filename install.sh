@@ -22,10 +22,15 @@ sudo apt-get install -y \
     postgresql-contrib \
     redis-server \
     libopencv-dev \
-    libtesseract-dev \
     cmake \
     protobuf-compiler \
     libprotobuf-dev
+sudo apt reinstall libssl-dev
+sudo apt install -y pkg-config libssl-dev libleptonica-dev
+sudo apt install -y libglib2.0-dev libleptonica-dev pkg-config
+sudo apt install -y build-essential clang libclang-dev libc-dev
+sudo apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+
 
 # Install Rust if not already installed
 if ! command -v cargo &> /dev/null; then
@@ -34,33 +39,6 @@ if ! command -v cargo &> /dev/null; then
     source $HOME/.cargo/env
 fi
 
-# Install kubectl if not present
-if ! command -v kubectl &> /dev/null; then
-    echo "Installing kubectl..."
-    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    chmod +x kubectl
-    sudo mv kubectl /usr/local/bin/
-fi
-
-# Setup project structure
-echo "Setting up project structure..."
-mkdir -p general-bots
-cd general-bots
-
-# Optional: Azure CLI installation
-echo "Would you like to install Azure CLI? (y/n)"
-read -r response
-if [[ "$response" =~ ^([yY][eE][sS]|[yY])+$ ]]
-then
-    echo "Installing Azure CLI..."
-    curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null
-    echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
-    sudo apt-get update
-    sudo apt-get install -y azure-cli
-fi
-
-# Optional: HandBrake installation
-echo "Would you like to install HandBrake? (y/n)"
 read -r response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])+$ ]]
 then
@@ -94,12 +72,6 @@ echo "Starting Redis service..."
 sudo systemctl start redis-server
 sudo systemctl enable redis-server
 
-echo "Installation completed!"
-echo "Next steps:"
-echo "1. Configure your Kubernetes cluster"
-echo "2. Update k8s/base/*.yaml files with your configuration"
-echo "3. Run ./deploy.sh to deploy to Kubernetes"
-echo "4. Check deployment status with: kubectl -n general-bots get pods"
 
 # Print service status
 echo -e "\nService Status:"

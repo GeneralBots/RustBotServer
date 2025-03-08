@@ -7,14 +7,3 @@ license = { workspace = true }
 
 [dependencies]
 gb-core = { path = "../gb-core" }
-async-trait= { workspace = true }
-tokio= { workspace = true }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"thiserror= { workspace = true }
-tracing= { workspace = true }
-minio-rs = "0.1"
-
-[dev-dependencies]
-rstest= { workspace = true }
-tokio-test = "0.4"
-tempfile = "3.8"

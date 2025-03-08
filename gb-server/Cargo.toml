@@ -1,0 +1,33 @@
+[package]
+name = "gb-server"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gb-core = { path = "../gb-core" }
+gb-messaging = { path = "../gb-messaging" }
+gb-monitoring = { path = "../gb-monitoring" }
+gb-file = { path = "../gb-file" }
+tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
+axum = { workspace = true, features = ["ws", "multipart", "macros"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+async-trait = { workspace = true }
+futures-util = { workspace = true, features = ["sink"] }  # Now valid, as futures-util is in workspace.dependencies
+chrono = { workspace = true, features = ["serde"] }
+tokio-stream = { workspace = true }
+sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
+redis = { workspace = true, features = ["tokio-comp"] }
+hyper = { workspace = true, features = ["server"] }
+hyper-util = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true, features = ["cors", "trace"] }
+
+[dev-dependencies]
+rstest = { workspace = true }
+tokio-test = { workspace = true }

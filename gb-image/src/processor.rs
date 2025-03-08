@@ -3,7 +3,6 @@ use image::{DynamicImage, ImageOutputFormat, Rgba};
 use imageproc::drawing::draw_text_mut;
 use rusttype::{Font, Scale};
 use std::io::Cursor;
-use tesseract::Tesseract;
 use tempfile::NamedTempFile;
 use std::io::Write;
 use std::fs;
@@ -29,10 +28,7 @@ impl ImageProcessor {
         temp_file.write_all(&cursor.into_inner())
             .map_err(|e| Error::internal(format!("Failed to write to temp file: {}", e)))?;
 
-        // Initialize Tesseract and process image
-        let api = Tesseract::new(None, Some("eng"))
-            .map_err(|e| Error::internal(format!("Failed to initialize Tesseract: {}", e)))?;
-
+       
         api.set_image(temp_file.path().to_str().unwrap())
             .map_err(|e| Error::internal(format!("Failed to set image: {}", e)))?
             .recognize()

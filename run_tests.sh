@@ -8,8 +8,8 @@ echo "Testing gb-core..."
 cd gb-core && cargo test
 
 # API tests
-echo "Testing gb-api..."
-cd ../gb-api && cargo test
+echo "Testing gb-server..."
+cd ../gb-server && cargo test
 
 # VM tests
 echo "Testing gb-vm..."

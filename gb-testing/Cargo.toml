@@ -8,50 +8,47 @@ license = { workspace = true }
 [dependencies]
 gb-core = { path = "../gb-core" }
 gb-auth = { path = "../gb-auth" }
-gb-api = { path = "../gb-api" }
+gb-server = { path = "../gb-server" }
 
-anyhow="1.0"
+anyhow = { workspace = true }
 # Testing frameworks
 goose = "0.17"  # Load testing
-criterion = { version = "0.5", features = ["async_futures"] }
-testcontainers = "0.14"
-k8s-openapi = { version = "0.18", features = ["v1_26"] }
-kube = { version = "0.82", features = ["runtime", "derive"] }
+criterion = { workspace = true, features = ["async_futures"] }
 
 # Async Runtime
-tokio= { workspace = true }
-async-trait= { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
 
 # HTTP Client
-reqwest = { version = "0.11", features = ["json", "stream"] }
-hyper = { version = "1.0", features = ["full"] }
+reqwest = { workspace = true, features = ["json", "stream"] }
+hyper = { workspace = true, features = ["full"] }
 
 # WebSocket Testing
-tokio-tungstenite = "0.20"
-tungstenite = "0.20"
+tokio-tungstenite = { workspace = true }
+tungstenite = { workspace = true }
 
 # Database
-sqlx= { workspace = true }
-redis= { workspace = true }
+sqlx = { workspace = true }
+redis = { workspace = true }
 
 # Metrics & Monitoring
-prometheus = { version = "0.13.0", features = ["process"] }
-tracing= { workspace = true }
-opentelemetry= { workspace = true }
+prometheus = { workspace = true, features = ["process"] }
+tracing = { workspace = true }
+opentelemetry = { workspace = true }
 
 # Serialization
-serde= { workspace = true }
-serde_json= { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Utils
-futures = "0.3"
-rand = "0.8"
-fake = { version = "2.9", features = ["derive"] }
-chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1.6", features = ["v4"] }
+futures = { workspace = true }
+rand = { workspace = true }
+fake = { workspace = true, features = ["derive"] }
+chrono = { workspace = true, features = ["serde"] }
+uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
-rstest = "0.18"
+rstest = { workspace = true }
 wiremock = "0.5"
 assert_cmd = "2.0"
 predicates = "3.0"

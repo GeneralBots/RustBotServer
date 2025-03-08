@@ -1,8 +1,3 @@
-use kube::{
-    api::{Api, DeleteParams},
-    Client,
-};
-use k8s_openapi::api::core::v1::Pod;
 use rand::seq::SliceRandom;
 
 pub struct ChaosTest {

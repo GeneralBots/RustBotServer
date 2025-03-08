@@ -3,6 +3,18 @@ pub mod models;
 pub mod traits;
 pub use errors::{Error, ErrorKind, Result};
 
+
+
+#[derive(Clone)]
+struct AppState {
+    db: PgPool,
+    redis: RedisClient,
+    storage: MinioClient,
+    message_processor: MessageProcessor,
+    customer: PostgresCustomerRepository,
+}
+
+
 #[cfg(test)]
 mod tests {
     use crate::models::{Customer, SubscriptionTier};
