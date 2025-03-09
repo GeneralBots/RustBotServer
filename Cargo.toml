@@ -46,6 +46,8 @@ tower-http = { version = "0.5", features = ["cors", "trace", "fs"] }
 hyper = { version = "1.1", features = ["full"] }
 hyper-util = { version = "0.1" }
 tonic = { version = "0.10", features = ["tls", "transport"] }
+actix-multipart = "0.4"
+
 
 # Database and storage
 sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "postgres", "mysql", "sqlite", "uuid", "time", "json"] }
@@ -111,6 +113,9 @@ base64 = "0.21"
 semver = "1.0"
 walkdir = "2.4"
 tempfile = "3.9"
+dotenv = "0.15"
+lettre = "0.10"
+sanitize-filename = "0.3"
 
 # Web assembly
 wasm-bindgen = "0.2"

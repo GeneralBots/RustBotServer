@@ -24,6 +24,8 @@ rdkafka = { workspace = true }
 tonic = { workspace = true }
 actix-web ={ workspace = true }
 anyhow = { workspace = true }
+jsonwebtoken =  { workspace = true }
+lettre=  { workspace = true }
 
 [dev-dependencies]
 mockall= { workspace = true }

@@ -1,11 +1,10 @@
 use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
 use futures::{StreamExt, TryStreamExt};
+use gb_core::models::AppState;
 use std::io::Write;
-use uuid::Uuid;
-
-use crate::models::AppError;
-use crate::utils::{create_response, extract_user_id};
+use gb_core::models::AppError;
+use gb_core::utils::{create_response, extract_user_id};
 
 #[actix_web::post("/files/upload")]
 pub async fn upload_file(

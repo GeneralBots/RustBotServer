@@ -15,6 +15,13 @@ thiserror= { workspace = true }
 tracing= { workspace = true }
 minio =  { workspace = true }
 actix-web ={ workspace = true }
+actix-multipart ={ workspace = true }
+futures  ={ workspace = true }
+uuid = { workspace = true }
+jsonwebtoken =  { workspace = true }
+lettre=  { workspace = true }
+sanitize-filename =  { workspace = true }
+
 [dev-dependencies]
 rstest= { workspace = true }
 tokio-test = "0.4"

@@ -7,7 +7,7 @@ pub struct AppConfig {
     pub database: DatabaseConfig,
     pub redis: RedisConfig,
     pub kafka: KafkaConfig,
-    pub zitadel: ZitadelConfig,
+    // pub zitadel: ZitadelConfig,
     pub minio: MinioConfig,
     pub email: EmailConfig,
 }
@@ -39,6 +39,7 @@ pub struct ZitadelConfig {
     pub domain: String,
     pub client_id: String,
     pub client_secret: String,
+    pub access_token: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -82,12 +83,12 @@ impl AppConfig {
             kafka: KafkaConfig {
                 brokers: env::var("KAFKA_BROKERS").expect("KAFKA_BROKERS must be set"),
             },
-            zitadel: ZitadelConfig {
-                domain: env::var("ZITADEL_DOMAIN").expect("ZITADEL_DOMAIN must be set"),
-                client_id: env::var("ZITADEL_CLIENT_ID").expect("ZITADEL_CLIENT_ID must be set"),
-                client_secret: env::var("ZITADEL_CLIENT_SECRET")
-                    .expect("ZITADEL_CLIENT_SECRET must be set"),
-            },
+            // zitadel: ZitadelConfig {
+            //     domain: env::var("ZITADEL_DOMAIN").expect("ZITADEL_DOMAIN must be set"),
+            //     client_id: env::var("ZITADEL_CLIENT_ID").expect("ZITADEL_CLIENT_ID must be set"),
+            //     client_secret: env::var("ZITADEL_CLIENT_SECRET")
+            //         .expect("ZITADEL_CLIENT_SECRET must be set"),
+            // },
             minio: MinioConfig {
                 endpoint: env::var("MINIO_ENDPOINT").expect("MINIO_ENDPOINT must be set"),
                 access_key: env::var("MINIO_ACCESS_KEY").expect("MINIO_ACCESS_KEY must be set"),

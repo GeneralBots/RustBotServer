@@ -9,7 +9,7 @@ license = { workspace = true }
 gb-core = { path = "../gb-core" }
 
 # Authentication & Security
-jsonwebtoken = "9.2"
+jsonwebtoken =  { workspace = true }
 argon2 = "0.5"
 rand = { version = "0.8", features = ["std"] }
 oauth2 = "4.4"

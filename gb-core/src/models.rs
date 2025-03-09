@@ -5,7 +5,7 @@ use redis::aio::ConnectionManager as RedisConnectionManager;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-use zitadel::api::zitadel::auth::v1::auth_service_client::AuthServiceClient;
+//use zitadel::api::zitadel::auth::v1::auth_service_client::AuthServiceClient;
 use serde_json::Value as JsonValue;
 use std::str::FromStr;
 
@@ -245,7 +245,7 @@ pub struct AppState {
     pub db_pool: PgPool,
     pub redis_pool: RedisConnectionManager,
     pub kafka_producer: FutureProducer,
-    pub zitadel_client: AuthServiceClient<tonic::transport::Channel>,
+    // pub zitadel_client: AuthServiceClient<tonic::transport::Channel>,
     pub minio_client: MinioClient,
 }
 

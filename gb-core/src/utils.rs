@@ -40,7 +40,7 @@ pub fn generate_jwt(user: &User, secret: &str) -> Result<String, AppError> {
         exp: expiration,
         iat: issued_at,
         email: user.email.clone(),
-        username: user.username.clone(),
+        username: user.email.clone(),
     };
     
     encode(
