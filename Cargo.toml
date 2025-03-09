@@ -61,7 +61,7 @@ lapin = "2.3"
 
 
 # Drive, Serialization and data formats
-minio = "0.1.0"
+minio = { git = "https://github.com/minio/minio-rs", branch = "master" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 protobuf = "3.3"

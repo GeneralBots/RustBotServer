@@ -375,6 +375,9 @@ pub enum AppError {
     
     #[error("Internal server error: {0}")]
     Internal(String),
+
+    
+
 }
 
 impl actix_web::ResponseError for AppError {

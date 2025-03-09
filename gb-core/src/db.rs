@@ -39,11 +39,12 @@ pub async fn init_kafka(config: &AppConfig) -> Result<FutureProducer> {
 }
 
 pub async fn init_zitadel(
-    config: &AppConfig,
+    _config: &AppConfig,
 ) -> Result<
     (),
     Box<dyn std::error::Error>>
  {
+    
     // TODO: https://github.com/smartive/zitadel-rust/blob/be389ca08c7f82d36fc1bcc36d2d9eb8666b22cd/examples/fetch_profile_with_service_account.rs#L18
     Ok(())
 }
