@@ -13,13 +13,13 @@ serde = { workspace = true , features = ["derive"] }
 serde_json ={ workspace = true }
 thiserror= { workspace = true }
 tracing= { workspace = true }
-minio =  { workspace = true }
-actix-web ={ workspace = true }
-actix-multipart ={ workspace = true }
 futures  ={ workspace = true }
 uuid = { workspace = true }
 jsonwebtoken =  { workspace = true }
 lettre=  { workspace = true }
+minio =  { workspace = true }
+actix-web ={ workspace = true }
+actix-multipart ={ workspace = true }
 sanitize-filename =  { workspace = true }
 tempfile =  { workspace = true }
 

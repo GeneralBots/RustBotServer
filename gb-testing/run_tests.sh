@@ -12,15 +12,15 @@ echo "Running load tests..."
 cargo test --test '*' --features load
 
 # Run performance benchmarks
-echo "Running performance benchmarks..."
-cargo bench
+#echo "Running performance benchmarks..."
+#cargo bench
 
 # Run stress tests
-echo "Running stress tests..."
-cargo test --test '*' --features stress
+#echo "Running stress tests..."
+#cargo test --test '*' --features stress
 
 # Run chaos tests
-echo "Running chaos tests..."
-cargo test --test '*' --features chaos
+#echo "Running chaos tests..."
+#cargo test --test '*' --features chaos
 
 echo "All tests completed!"

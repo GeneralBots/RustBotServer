@@ -5,10 +5,20 @@ edition = { workspace = true }
 authors = { workspace = true }
 license = { workspace = true }
 
+# Define features
+[features]
+default = ["integration"] # No default features
+integration = [] # Feature for integration tests
+load = [] # Feature for load tests
+stress = [] # Feature for stress tests
+chaos = [] # Feature for chaos tests
+
+
 [dependencies]
 gb-core = { path = "../gb-core" }
 gb-auth = { path = "../gb-auth" }
 gb-server = { path = "../gb-server" }
+gb-file = { path = "../gb-file" }
 
 anyhow = { workspace = true }
 # Testing frameworks
@@ -46,6 +56,14 @@ rand = { workspace = true }
 fake = { workspace = true, features = ["derive"] }
 chrono = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["v4"] }
+
+
+minio =  { workspace = true }
+actix-web ={ workspace = true }
+actix-multipart ={ workspace = true }
+sanitize-filename =  { workspace = true }
+tempfile =  { workspace = true }
+bytes  =  { workspace = true }
 
 [dev-dependencies]
 rstest = { workspace = true }
