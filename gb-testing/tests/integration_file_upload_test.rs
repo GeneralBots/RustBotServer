@@ -3,7 +3,7 @@ use anyhow::Result;
 use bytes::Bytes;
 use gb_core::models::AppState;
 use gb_file::handlers::upload_file;
-use minio::s3::args::{BucketExistsArgs, GetObjectArgs, MakeBucketArgs, StatObjectArgs};
+use minio::s3::args::{BucketExistsArgs, MakeBucketArgs, StatObjectArgs};
 use minio::s3::client::ClientBuilder as MinioClientBuilder;
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
@@ -55,7 +55,7 @@ async fn test_successful_file_upload() -> Result<()> {
 
     // Prepare a multipart request
     let boundary = "----WebKitFormBoundaryX";
-    let content_type = format!("multipart/form-data; boundary={}", boundary);
+    
 
     // Read the file content
     let mut file_content = Vec::new();

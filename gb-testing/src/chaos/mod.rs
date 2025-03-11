@@ -3,7 +3,7 @@ pub struct ChaosTest {
 }
 
 impl ChaosTest {
-    pub async fn new(namespace: String) -> anyhow::Result<Self> {
+    pub async fn new() -> anyhow::Result<Self> {
         // Initialize the ChaosTest struct
         Ok(ChaosTest {  })
     }
