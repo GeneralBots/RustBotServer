@@ -1,13 +1,15 @@
 use actix_multipart::Multipart;
-use futures::TryStreamExt;
-use gb_core::models::AppState;
-use std::io::Write;
-use gb_core::models::AppError;
-use gb_core::utils::{create_response, extract_user_id};
 use actix_web::{post, web, HttpRequest, HttpResponse};
-use tempfile::NamedTempFile;
+use gb_core::models::AppError;
+use gb_core::models::AppState;
+use gb_core::utils::{create_response, extract_user_id};
 use minio::s3::builders::ObjectContent;
 use minio::s3::Client;
+use std::io::Write;
+use tempfile::NamedTempFile;
+use minio::s3::types::ToStream;
+use tokio_stream::StreamExt;
+
 
 #[post("/files/upload/{folder_path}")]
 pub async fn upload_file(
@@ -17,24 +19,29 @@ pub async fn upload_file(
 ) -> Result<HttpResponse, actix_web::Error> {
     let folder_path = folder_path.into_inner();
 
-    // Create a temporary file to store the uploaded file
+    // Create a temporary file to store the uploaded file.
+
     let mut temp_file = NamedTempFile::new().map_err(|e| {
         actix_web::error::ErrorInternalServerError(format!("Failed to create temp file: {}", e))
     })?;
 
     let mut file_name = None;
 
-    // Iterate over the multipart stream
+    // Iterate over the multipart stream.
+
     while let Some(mut field) = payload.try_next().await? {
         let content_disposition = field.content_disposition();
         file_name = content_disposition
             .get_filename()
             .map(|name| name.to_string());
 
-        // Write the file content to the temporary file
+        // Write the file content to the temporary file.
         while let Some(chunk) = field.try_next().await? {
             temp_file.write_all(&chunk).map_err(|e| {
-                actix_web::error::ErrorInternalServerError(format!("Failed to write to temp file: {}", e))
+                actix_web::error::ErrorInternalServerError(format!(
+                    "Failed to write to temp file: {}",
+                    e
+                ))
             })?;
         }
     }
@@ -46,7 +53,7 @@ pub async fn upload_file(
     let object_name = format!("{}/{}", folder_path, file_name);
 
     // Upload the file to the MinIO bucket
-    let client: Client = state.minio_client.clone();
+    let client: Client = state.minio_client.clone().unwrap();
     let bucket_name = "file-upload-rust-bucket";
 
     let content = ObjectContent::from(temp_file.path());
@@ -79,10 +86,46 @@ pub async fn delete_file(
     _file_path: web::Json<String>,
 ) -> Result<HttpResponse, AppError> {
     let _user_id = extract_user_id(&req)?;
-    
-    
+
     Ok(create_response(
         true,
         Some("File deleted successfully".to_string()),
     ))
+}
+#[post("/files/list/{folder_path}")]
+pub async fn list_file(
+    folder_path: web::Path<String>,
+    state: web::Data<AppState>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let folder_path = folder_path.into_inner();
+
+    let client: Client = state.minio_client.clone().unwrap();
+    let bucket_name = "file-upload-rust-bucket";
+
+    // Create the stream using the to_stream() method
+    let mut objects_stream = client
+        .list_objects(bucket_name)
+        .prefix(Some(folder_path))
+        .to_stream()
+        .await;
+
+    let mut file_list = Vec::new();
+    
+    // Use StreamExt::next() to iterate through the stream
+    while let Some(items) = objects_stream.next().await {
+        match items {
+            Ok(result) => {
+                for item in result.contents {
+                    file_list.push(item.name);
+                }
+            },
+            Err(e) => {
+                return Err(actix_web::error::ErrorInternalServerError(
+                    format!("Failed to list files in MinIO: {}", e)
+                ));
+            }
+        }
+    }
+
+    Ok(HttpResponse::Ok().json(file_list))
 }

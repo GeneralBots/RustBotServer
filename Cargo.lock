@@ -2336,6 +2336,19 @@ checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
 
 [[package]]
 name = "env_logger"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
+dependencies = [
+ "humantime",
+ "is-terminal",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
+name = "env_logger"
 version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcaee3d8e3cfc3fd92428d477bc97fc29ec8716d180c0d74c643bb26166660e0"
@@ -2761,6 +2774,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tokio-openssl",
+ "tokio-stream",
  "tokio-test",
  "tower 0.4.13",
  "tower-http",
@@ -2872,10 +2886,12 @@ dependencies = [
  "actix-multipart",
  "actix-web",
  "async-trait",
+ "env_logger 0.10.2",
  "futures 0.3.31",
  "gb-core",
  "jsonwebtoken",
  "lettre",
+ "log",
  "minio",
  "rstest",
  "sanitize-filename",
@@ -2884,6 +2900,7 @@ dependencies = [
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-stream",
  "tokio-test",
  "tracing",
  "uuid",
@@ -3080,6 +3097,7 @@ dependencies = [
  "sqlx",
  "tempfile",
  "tokio",
+ "tokio-stream",
  "tokio-tungstenite 0.24.0",
  "tracing",
  "tungstenite 0.20.1",
@@ -4614,7 +4632,7 @@ dependencies = [
  "crc",
  "dashmap 6.1.0",
  "derivative",
- "env_logger",
+ "env_logger 0.11.6",
  "futures-util",
  "hex",
  "hmac",
@@ -4723,12 +4741,6 @@ name = "multimap"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
-
-[[package]]
-name = "multimap"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1a5d38b9b352dbd913288736af36af41c48d61b1a8cd34bcecd727561b7d511"
 
 [[package]]
 name = "multimap"
@@ -6064,7 +6076,7 @@ dependencies = [
  "heck 0.5.0",
  "itertools 0.13.0",
  "log",
- "multimap 0.9.1",
+ "multimap 0.10.0",
  "once_cell",
  "petgraph 0.6.5",
  "prettyplease 0.2.30",

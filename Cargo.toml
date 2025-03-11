@@ -39,6 +39,8 @@ futures = "0.3"
 futures-util = "0.3"  # Add futures-util here
 parking_lot = "0.12"
 bytes = "1.0"
+log = "0.4"
+env_logger = "0.10"
 
 # Web framework and servers
 axum = { version = "0.7.9", features = ["ws", "multipart"] }

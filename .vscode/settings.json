@@ -2,5 +2,6 @@
     "lldb.executable": "/usr/bin/lldb",
     "lldb.showDisassembly": "never",
     "lldb.dereferencePointers": true,
-    "lldb.consoleMode": "commands"
+    "lldb.consoleMode": "commands",
+    "rust-test Explorer.cargoTestExtraArgs": ["--", "--nocapture"]
 }

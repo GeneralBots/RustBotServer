@@ -1,9 +1,9 @@
-use gb_testing::load::{LoadTest, LoadTestConfig};
+use gb_testing::load::LoadTestConfig;
 use std::time::Duration;
 
 #[tokio::test]
 async fn test_auth_load() -> anyhow::Result<()> {
-    let config = LoadTestConfig {
+    let _config = LoadTestConfig {
         users: 100,
         duration: Duration::from_secs(300),
         ramp_up: Duration::from_secs(60),

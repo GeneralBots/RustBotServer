@@ -1,12 +1,11 @@
 
 pub struct ChaosTest {
-    namespace: String,
 }
 
 impl ChaosTest {
     pub async fn new(namespace: String) -> anyhow::Result<Self> {
         // Initialize the ChaosTest struct
-        Ok(ChaosTest { namespace })
+        Ok(ChaosTest {  })
     }
 
     pub async fn network_partition(&self) -> anyhow::Result<()> {

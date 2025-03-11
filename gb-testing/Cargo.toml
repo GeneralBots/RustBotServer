@@ -27,6 +27,7 @@ criterion = { workspace = true, features = ["async_futures"] }
 
 # Async Runtime
 tokio = { workspace = true }
+tokio-stream= { workspace = true }
 async-trait = { workspace = true }
 
 # HTTP Client

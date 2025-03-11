@@ -1,14 +1,10 @@
 use actix_web::{test, web, App};
 use anyhow::Result;
-use async_trait::async_trait;
 use bytes::Bytes;
 use gb_core::models::AppState;
 use gb_file::handlers::upload_file;
-use gb_testing::integration::{IntegrationTest, IntegrationTestCase};
-use minio::s3::args::{
-    BucketExistsArgs, GetObjectArgs, MakeBucketArgs, RemoveObjectArgs, StatObjectArgs,
-};
-use minio::s3::client::{Client as MinioClient, ClientBuilder as MinioClientBuilder};
+use minio::s3::args::{BucketExistsArgs, GetObjectArgs, MakeBucketArgs, StatObjectArgs};
+use minio::s3::client::ClientBuilder as MinioClientBuilder;
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
 use std::fs::File;
@@ -17,13 +13,10 @@ use std::io::Write;
 use std::str::FromStr;
 use tempfile::NamedTempFile;
 
-
 #[tokio::test]
-
 async fn test_successful_file_upload() -> Result<()> {
-
     // Setup test environment and MinIO client
-    let base_url = format!("https://{}", "localhost:9000");
+    let base_url = format!("http://{}", "localhost:9000");
     let base_url = BaseUrl::from_str(&base_url)?;
     let credentials = StaticProvider::new(&"minioadmin", &"minioadmin", None);
 
@@ -45,14 +38,16 @@ async fn test_successful_file_upload() -> Result<()> {
     }
 
     let app_state = web::Data::new(AppState {
-        minio_client,
-        config: todo!(),
-        db_pool: todo!(),
-        redis_pool: todo!(),
-        kafka_producer: todo!(),
+        minio_client: Some(minio_client.clone()),
+        config: None,
+        db_pool: None,
+        kafka_producer: None,
+        redis_pool: None,
     });
 
-    let app = test::init_service(App::new().app_data(app_state.clone()).service(upload_file)).await;
+    let app = 
+    test::init_service(App::new().app_data(app_state.clone())
+        .service(upload_file)).await;
 
     // Create a test file with content
     let mut temp_file = NamedTempFile::new()?;
@@ -91,17 +86,13 @@ async fn test_successful_file_upload() -> Result<()> {
 
     // Using object-based API for stat_object
     let stat_object_args = StatObjectArgs::new(bucket_name, object_name)?;
-    let object_exists = 
-        minio_client
-        .stat_object(&stat_object_args)
-        .await
-        .is_ok();
+    let object_exists = minio_client.clone().stat_object(&stat_object_args).await.is_ok();
 
     assert!(object_exists, "Uploaded file should exist in MinIO");
 
     // Verify file content using object-based API
-    let get_object_args = GetObjectArgs::new(bucket_name, object_name)?;
-    let get_object_result = minio_client.get_object(bucket_name, object_name);
+    // let get_object_args = GetObjectArgs::new(bucket_name, object_name)?;
+    // let get_object_result = minio_client.get_object(bucket_name, object_name);
 
     // let mut object_content = Vec::new();
     // get_object_result.read_to_end(&mut object_content)?;

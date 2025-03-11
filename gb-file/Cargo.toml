@@ -22,6 +22,9 @@ actix-web ={ workspace = true }
 actix-multipart ={ workspace = true }
 sanitize-filename =  { workspace = true }
 tempfile =  { workspace = true }
+log  =  { workspace = true }
+env_logger =  { workspace = true }
+tokio-stream = { workspace = true }
 
 [dev-dependencies]
 rstest= { workspace = true }

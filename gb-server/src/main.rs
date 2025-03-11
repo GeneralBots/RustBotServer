@@ -26,11 +26,11 @@ async fn main() -> std::io::Result<()> {
     let minio_client = init_minio(&config).await.expect("Failed to initialize Minio");
 
     let app_state = web::Data::new(models::AppState {
-        config: config.clone(),
-        db_pool,
-        redis_pool,
-        kafka_producer,
-        minio_client,
+        config: Some(config.clone()),
+        db_pool: Some(db_pool),
+        redis_pool: Some(redis_pool),
+        kafka_producer: Some(kafka_producer),
+        minio_client: Some(minio_client),
     });
 
     // Start HTTP server

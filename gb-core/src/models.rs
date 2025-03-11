@@ -19,17 +19,15 @@ pub struct CoreError(pub String);
 pub enum CustomerStatus {
     Active,
     Inactive,
-    Suspended
+    Suspended,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SubscriptionTier {
     Free,
     Pro,
-    Enterprise
+    Enterprise,
 }
-
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Instance {
@@ -118,7 +116,7 @@ impl FromStr for UserStatus {
             "active" => Ok(UserStatus::Active),
             "inactive" => Ok(UserStatus::Inactive),
             "suspended" => Ok(UserStatus::Suspended),
-            _ => Ok(UserStatus::Inactive)
+            _ => Ok(UserStatus::Inactive),
         }
     }
 }
@@ -146,8 +144,6 @@ pub struct User {
     pub created_at: DateTime<Utc>,
 }
 
-
-
 // Update the Customer struct to include these fields
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Customer {
@@ -155,16 +151,16 @@ pub struct Customer {
     pub name: String,
     pub max_instances: u32,
     pub email: String,
-    pub status: CustomerStatus,          // Add this field
-    pub subscription_tier: SubscriptionTier,  // Add this field
+    pub status: CustomerStatus,              // Add this field
+    pub subscription_tier: SubscriptionTier, // Add this field
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 impl Customer {
     pub fn new(
-        name: String, 
-        email: String, 
+        name: String,
+        email: String,
         subscription_tier: SubscriptionTier,
         max_instances: u32,
     ) -> Self {
@@ -174,7 +170,7 @@ impl Customer {
             email,
             max_instances,
             subscription_tier,
-            status: CustomerStatus::Active,  // Default to Active
+            status: CustomerStatus::Active, // Default to Active
             created_at: Utc::now(),
             updated_at: Utc::now(),
         }
@@ -238,15 +234,17 @@ pub struct FileInfo {
     pub created_at: DateTime<Utc>,
 }
 
+// App state shared across all handlers
+
 
 // App state shared across all handlers
 pub struct AppState {
-    pub config: AppConfig,
-    pub db_pool: PgPool,
-    pub redis_pool: RedisConnectionManager,
-    pub kafka_producer: FutureProducer,
-    // pub zitadel_client: AuthServiceClient<tonic::transport::Channel>,
-    pub minio_client: MinioClient,
+    pub minio_client: Option<MinioClient>,
+    pub config: Option<AppConfig>,
+    pub db_pool: Option<PgPool>,
+    pub redis_pool: Option<RedisConnectionManager>,
+    pub kafka_producer: Option<FutureProducer>,
+    //pub zitadel_client: Option<AuthServiceClient><tonic::transport::Channel>,
 }
 
 // File models
@@ -288,7 +286,7 @@ pub struct Conversation {
 pub struct ConversationMember {
     pub conversation_id: Uuid,
     pub user_id: Uuid,
-    pub joined_at: DateTime<Utc>
+    pub joined_at: DateTime<Utc>,
 }
 
 // Calendar models
@@ -348,36 +346,33 @@ pub struct ApiResponse<T> {
 pub enum AppError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
-    
+
     #[error("Redis error: {0}")]
     Redis(#[from] redis::RedisError),
-    
+
     #[error("Kafka error: {0}")]
     Kafka(String),
-    
+
     #[error("Zitadel error: {0}")]
     Zitadel(#[from] tonic::Status),
-    
+
     #[error("Minio error: {0}")]
     Minio(String),
-    
+
     #[error("Validation error: {0}")]
     Validation(String),
-    
+
     #[error("Not found: {0}")]
     NotFound(String),
-    
+
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
-    
+
     #[error("Forbidden: {0}")]
     Forbidden(String),
-    
+
     #[error("Internal server error: {0}")]
     Internal(String),
-
-    
-
 }
 
 impl actix_web::ResponseError for AppError {
@@ -385,7 +380,9 @@ impl actix_web::ResponseError for AppError {
         let (status, error_message) = match self {
             AppError::Validation(_) => (actix_web::http::StatusCode::BAD_REQUEST, self.to_string()),
             AppError::NotFound(_) => (actix_web::http::StatusCode::NOT_FOUND, self.to_string()),
-            AppError::Unauthorized(_) => (actix_web::http::StatusCode::UNAUTHORIZED, self.to_string()),
+            AppError::Unauthorized(_) => {
+                (actix_web::http::StatusCode::UNAUTHORIZED, self.to_string())
+            }
             AppError::Forbidden(_) => (actix_web::http::StatusCode::FORBIDDEN, self.to_string()),
             _ => (
                 actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,

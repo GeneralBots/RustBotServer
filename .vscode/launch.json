@@ -18,7 +18,7 @@
             "args": [],
             "cwd": "${workspaceFolder}",
             "env": {
-                "RUST_LOG": "debug",
+                "RUST_LOG": "info",
                 "DATABASE_URL": "postgres://gbuser:gbpassword@localhost:5432/generalbots",
                 "REDIS_URL": "redis://localhost:6379"
             }
@@ -42,7 +42,9 @@
             "args": [
                 "--test-threads=1"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",  "env": {
+                "RUST_LOG": "info"
+              }
         },
         {
             "type": "lldb",
@@ -61,7 +63,9 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",   "env": {
+                "RUST_LOG": "info"
+              }
         },
     ],
     "compounds": [
