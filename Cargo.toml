@@ -18,7 +18,7 @@ members = [
     "gb-document",
     "gb-file",
     "gb-llm",
-    "gb-calendar",
+    "gb-calendar", "gb-infra",
 ]
 
 [workspace.package]
@@ -41,6 +41,7 @@ parking_lot = "0.12"
 bytes = "1.0"
 log = "0.4"
 env_logger = "0.10"
+ctrlc = "3.2"
 
 # Web framework and servers
 axum = { version = "0.7.9", features = ["ws", "multipart"] }

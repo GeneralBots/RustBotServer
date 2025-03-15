@@ -2927,6 +2927,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "gb-infra"
+version = "0.1.0"
+dependencies = [
+ "ctrlc",
+ "dotenv",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "gb-llm"
 version = "0.1.0"
 dependencies = [
