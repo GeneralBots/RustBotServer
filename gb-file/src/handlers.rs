@@ -10,7 +10,6 @@ use tempfile::NamedTempFile;
 use minio::s3::types::ToStream;
 use tokio_stream::StreamExt;
 
-
 #[post("/files/upload/{folder_path}")]
 pub async fn upload_file(
     folder_path: web::Path<String>,
@@ -92,6 +91,8 @@ pub async fn delete_file(
         Some("File deleted successfully".to_string()),
     ))
 }
+
+
 #[post("/files/list/{folder_path}")]
 pub async fn list_file(
     folder_path: web::Path<String>,

@@ -1,0 +1,11 @@
+PARAM to AS STRING
+PARAM template AS STRING 
+
+company = 
+
+doc = FILL template
+
+subject= REWRITE "Based on this ${history}, generate a subject for a proposal email"
+contents = REWRITE "Based on this ${history}, and ${subject}, generate the e-mail body for ${to}, signed by ${user}.
+
+SEND MAIL to, subject, contents

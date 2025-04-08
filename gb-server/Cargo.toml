@@ -29,6 +29,8 @@ tower = { workspace = true }
 tower-http = { workspace = true, features = ["cors", "trace"] }
 actix-web = { workspace = true }
 dotenv = { workspace = true }
+log = { workspace = true }
+vector = "0.4.1"
 
 [dev-dependencies]
 rstest = { workspace = true }

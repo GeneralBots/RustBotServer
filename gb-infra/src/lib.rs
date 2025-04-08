@@ -1,5 +1,5 @@
 pub mod manager;
-pub mod utils;
+pub mod setup;
 pub mod services {
     pub mod minio;
     pub mod nginx;

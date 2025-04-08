@@ -242,9 +242,6 @@ pub struct AppState {
     pub minio_client: Option<MinioClient>,
     pub config: Option<AppConfig>,
     pub db_pool: Option<PgPool>,
-    pub redis_pool: Option<RedisConnectionManager>,
-    pub kafka_producer: Option<FutureProducer>,
-    //pub zitadel_client: Option<AuthServiceClient><tonic::transport::Channel>,
 }
 
 // File models

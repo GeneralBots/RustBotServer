@@ -2,6 +2,383 @@ You are a distributed systems architect for a billion-scale real-time communicat
 
 1. Core Domains and Models:
 
+CREATE TABLE "GBOnlineSubscription" (
+	"Id" serial4 NOT NULL,
+	"instanceId" int4 NULL,
+	"externalSubscriptionId" varchar(255) NULL,
+	"saasSubscriptionStatus" varchar(255) NULL,
+	"isFreeTrial" bool NULL,
+	"planId" varchar(255) NULL,
+	quantity int4 NULL,
+	"lastCCFourDigits" int4 NULL,
+	status varchar(255) NULL,
+	CONSTRAINT "GBOnlineSubscription_pkey" PRIMARY KEY ("Id")
+);
+
+CREATE TABLE "GuaribasAdmin" (
+	id serial4 NOT NULL,
+	"instanceId" int4 NULL,
+	"key" varchar(255) NULL,
+	value varchar(4000) NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	CONSTRAINT "GuaribasAdmin_pkey" PRIMARY KEY (id)
+);
+
+
+CREATE TABLE "GuaribasChannel" (
+	"channelId" serial4 NOT NULL,
+	title varchar(255) NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	CONSTRAINT "GuaribasChannel_pkey" PRIMARY KEY ("channelId")
+);
+
+
+-- public."GuaribasInstance" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasInstance";
+
+CREATE TABLE "GuaribasInstance" (
+	"instanceId" serial4 NOT NULL,
+	"botEndpoint" varchar(255) NULL,
+	"whoAmIVideo" varchar(255) NULL,
+	"botId" varchar(255) NULL,
+	title varchar(255) NULL,
+	"activationCode" varchar(16) NULL,
+	description varchar(255) NULL,
+	state varchar(16) NULL,
+	"botKey" varchar(64) NULL,
+	"enabledAdmin" varchar(255) NULL,
+	"engineName" varchar(255) NULL,
+	"marketplaceId" varchar(255) NULL,
+	"textAnalyticsKey" varchar(255) NULL,
+	"textAnalyticsEndpoint" varchar(255) NULL,
+	"translatorKey" varchar(64) NULL,
+	"translatorEndpoint" varchar(128) NULL,
+	"marketplacePassword" varchar(255) NULL,
+	"webchatKey" varchar(255) NULL,
+	"authenticatorTenant" varchar(255) NULL,
+	"authenticatorAuthorityHostUrl" varchar(255) NULL,
+	"cloudSubscriptionId" varchar(255) NULL,
+	"cloudUsername" varchar(255) NULL,
+	"cloudPassword" varchar(255) NULL,
+	"cloudLocation" varchar(255) NULL,
+	"googleBotKey" varchar(255) NULL,
+	"googleChatApiKey" varchar(255) NULL,
+	"googleChatSubscriptionName" varchar(255) NULL,
+	"googleClientEmail" varchar(255) NULL,
+	"googlePrivateKey" varchar(4000) NULL,
+	"googleProjectId" varchar(255) NULL,
+	"facebookWorkplaceVerifyToken" varchar(255) NULL,
+	"facebookWorkplaceAppSecret" varchar(255) NULL,
+	"facebookWorkplaceAccessToken" varchar(512) NULL,
+	"whatsappBotKey" varchar(255) NULL,
+	"whatsappServiceKey" varchar(255) NULL,
+	"whatsappServiceNumber" varchar(255) NULL,
+	"whatsappServiceUrl" varchar(255) NULL,
+	"smsKey" varchar(255) NULL,
+	"smsSecret" varchar(255) NULL,
+	"smsServiceNumber" varchar(255) NULL,
+	"speechKey" varchar(255) NULL,
+	"speechEndpoint" varchar(255) NULL,
+	"spellcheckerKey" varchar(255) NULL,
+	"spellcheckerEndpoint" varchar(255) NULL,
+	theme varchar(255) NULL,
+	ui varchar(255) NULL,
+	kb varchar(255) NULL,
+	"nlpAppId" varchar(255) NULL,
+	"nlpKey" varchar(255) NULL,
+	"nlpEndpoint" varchar(512) NULL,
+	"nlpAuthoringKey" varchar(255) NULL,
+	"deploymentPaths" varchar(255) NULL,
+	"searchHost" varchar(255) NULL,
+	"searchKey" varchar(255) NULL,
+	"searchIndex" varchar(255) NULL,
+	"searchIndexer" varchar(255) NULL,
+	"storageUsername" varchar(255) NULL,
+	"storagePassword" varchar(255) NULL,
+	"storageName" varchar(255) NULL,
+	"storageServer" varchar(255) NULL,
+	"storageDialect" varchar(255) NULL,
+	"storagePath" varchar(255) NULL,
+	"adminPass" varchar(255) NULL,
+	"searchScore" float8 NULL,
+	"nlpScore" float8 NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	params varchar(4000) NULL,
+	CONSTRAINT "GuaribasInstance_pkey" PRIMARY KEY ("instanceId")
+);
+
+
+-- public."GuaribasApplications" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasApplications";
+
+CREATE TABLE "GuaribasApplications" (
+	id serial4 NOT NULL,
+	"name" varchar(255) NULL,
+	"instanceId" int4 NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	CONSTRAINT "GuaribasApplications_pkey" PRIMARY KEY (id),
+	CONSTRAINT "GuaribasApplications_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasGroup" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasGroup";
+
+CREATE TABLE "GuaribasGroup" (
+	"groupId" serial4 NOT NULL,
+	"displayName" varchar(512) NULL,
+	"instanceId" int4 NULL,
+	CONSTRAINT "GuaribasGroup_pkey" PRIMARY KEY ("groupId"),
+	CONSTRAINT "GuaribasGroup_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasLog" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasLog";
+
+CREATE TABLE "GuaribasLog" (
+	"logId" serial4 NOT NULL,
+	message varchar(1024) NULL,
+	kind varchar(1) NULL,
+	"instanceId" int4 NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	CONSTRAINT "GuaribasLog_pkey" PRIMARY KEY ("logId"),
+	CONSTRAINT "GuaribasLog_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasPackage" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasPackage";
+
+CREATE TABLE "GuaribasPackage" (
+	"packageId" serial4 NOT NULL,
+	"packageName" varchar(255) NULL,
+	"instanceId" int4 NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	custom varchar(512) NULL,
+	CONSTRAINT "GuaribasPackage_pkey" PRIMARY KEY ("packageId"),
+	CONSTRAINT "GuaribasPackage_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasQuestionAlternate" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasQuestionAlternate";
+
+CREATE TABLE "GuaribasQuestionAlternate" (
+	"quickAnswerId" serial4 NOT NULL,
+	"questionTyped" varchar(255) NULL,
+	"questionText" varchar(255) NULL,
+	"instanceId" int4 NULL,
+	CONSTRAINT "GuaribasQuestionAlternate_pkey" PRIMARY KEY ("quickAnswerId"),
+	CONSTRAINT "GuaribasQuestionAlternate_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasSchedule" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasSchedule";
+
+CREATE TABLE "GuaribasSchedule" (
+	id serial4 NOT NULL,
+	"name" varchar(255) NULL,
+	schedule varchar(255) NULL,
+	"instanceId" int4 NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	CONSTRAINT "GuaribasSchedule_pkey" PRIMARY KEY (id),
+	CONSTRAINT "GuaribasSchedule_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasUser" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasUser";
+
+CREATE TABLE "GuaribasUser" (
+	"userId" serial4 NOT NULL,
+	"displayName" varchar(255) NULL,
+	"userSystemId" varchar(255) NULL,
+	"userName" varchar(255) NULL,
+	"defaultChannel" varchar(255) NULL,
+	email varchar(255) NULL,
+	locale varchar(5) NULL,
+	"instanceId" int4 NULL,
+	"agentSystemId" int4 NULL,
+	"agentContacted" timestamptz NULL,
+	"agentMode" varchar(16) NULL,
+	"conversationReference" text NULL,
+	"conversationId" int4 NULL,
+	"hearOnDialog" varchar(64) NULL,
+	params varchar(4000) NULL,
+	CONSTRAINT "GuaribasUser_pkey" PRIMARY KEY ("userId"),
+	CONSTRAINT "GuaribasUser_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasUserGroup" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasUserGroup";
+
+CREATE TABLE "GuaribasUserGroup" (
+	id serial4 NOT NULL,
+	"userId" int4 NULL,
+	"groupId" int4 NULL,
+	"instanceId" int4 NULL,
+	CONSTRAINT "GuaribasUserGroup_pkey" PRIMARY KEY (id),
+	CONSTRAINT "GuaribasUserGroup_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "GuaribasGroup"("groupId") ON UPDATE CASCADE,
+	CONSTRAINT "GuaribasUserGroup_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE,
+	CONSTRAINT "GuaribasUserGroup_userId_fkey" FOREIGN KEY ("userId") REFERENCES "GuaribasUser"("userId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasAnswer" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasAnswer";
+
+CREATE TABLE "GuaribasAnswer" (
+	"answerId" serial4 NOT NULL,
+	media varchar(512) NULL,
+	format varchar(12) NULL,
+	"content" text NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	"nextId" int4 NULL,
+	"prevId" int4 NULL,
+	"instanceId" int4 NULL,
+	"packageId" int4 NULL,
+	CONSTRAINT "GuaribasAnswer_pkey" PRIMARY KEY ("answerId"),
+	CONSTRAINT "GuaribasAnswer_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "GuaribasPackage"("packageId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasQuestion" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasQuestion";
+
+CREATE TABLE "GuaribasQuestion" (
+	"questionId" serial4 NOT NULL,
+	subject1 varchar(64) NULL,
+	subject2 varchar(64) NULL,
+	subject3 varchar(64) NULL,
+	subject4 varchar(64) NULL,
+	keywords varchar(1024) NULL,
+	"skipIndex" bool NULL,
+	"from" varchar(512) NULL,
+	"to" varchar(512) NULL,
+	"content" text NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	"answerId" int4 NULL,
+	"instanceId" int4 NULL,
+	"packageId" int4 NULL,
+	CONSTRAINT "GuaribasQuestion_pkey" PRIMARY KEY ("questionId"),
+	CONSTRAINT "GuaribasQuestion_answerId_fkey" FOREIGN KEY ("answerId") REFERENCES "GuaribasAnswer"("answerId") ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT "GuaribasQuestion_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE,
+	CONSTRAINT "GuaribasQuestion_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "GuaribasPackage"("packageId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasSubject" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasSubject";
+
+CREATE TABLE "GuaribasSubject" (
+	"subjectId" serial4 NOT NULL,
+	"internalId" varchar(255) NULL,
+	description varchar(512) NULL,
+	"from" varchar(255) NULL,
+	"to" varchar(255) NULL,
+	"parentSubjectId" int4 NULL,
+	"instanceId" int4 NULL,
+	"responsibleUserId" int4 NULL,
+	"packageId" int4 NULL,
+	CONSTRAINT "GuaribasSubject_pkey" PRIMARY KEY ("subjectId"),
+	CONSTRAINT "GuaribasSubject_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "GuaribasInstance"("instanceId") ON UPDATE CASCADE,
+	CONSTRAINT "GuaribasSubject_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "GuaribasPackage"("packageId") ON UPDATE CASCADE,
+	CONSTRAINT "GuaribasSubject_parentSubjectId_fkey" FOREIGN KEY ("parentSubjectId") REFERENCES "GuaribasSubject"("subjectId") ON UPDATE CASCADE,
+	CONSTRAINT "GuaribasSubject_responsibleUserId_fkey" FOREIGN KEY ("responsibleUserId") REFERENCES "GuaribasUser"("userId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasConversation" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasConversation";
+
+CREATE TABLE "GuaribasConversation" (
+	"conversationId" serial4 NOT NULL,
+	"instanceId" int4 NULL,
+	"startSubjectId" int4 NULL,
+	"channelId" int4 NULL,
+	"rateDate" timestamptz NULL,
+	rate float8 NULL,
+	feedback varchar(512) NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	"text" varchar(255) NULL,
+	"startedByUserId" int4 NULL,
+	CONSTRAINT "GuaribasConversation_pkey" PRIMARY KEY ("conversationId"),
+	CONSTRAINT "GuaribasConversation_startSubjectId_fkey" FOREIGN KEY ("startSubjectId") REFERENCES "GuaribasSubject"("subjectId") ON UPDATE CASCADE,
+	CONSTRAINT "GuaribasConversation_startedByUserId_fkey" FOREIGN KEY ("startedByUserId") REFERENCES "GuaribasUser"("userId") ON UPDATE CASCADE
+);
+
+
+-- public."GuaribasConversationMessage" definition
+
+-- Drop table
+
+-- DROP TABLE "GuaribasConversationMessage";
+
+CREATE TABLE "GuaribasConversationMessage" (
+	"conversationMessageId" serial4 NOT NULL,
+	"subjectId" int4 NULL,
+	"content" text NULL,
+	"createdAt" timestamptz NULL,
+	"updatedAt" timestamptz NULL,
+	"conversationId" int4 NULL,
+	"instanceId" int4 NULL,
+	"userId" int4 NULL,
+	CONSTRAINT "GuaribasConversationMessage_pkey" PRIMARY KEY ("conversationMessageId"),
+	CONSTRAINT "GuaribasConversationMessage_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "GuaribasConversation"("conversationId") ON UPDATE CASCADE,
+	CONSTRAINT "GuaribasConversationMessage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "GuaribasUser"("userId") ON UPDATE CASCADE
+);
 
 A. Customer Hierarchy:
 - Customer (top-level organization)
@@ -118,57 +495,12 @@ A. Storage Layer:
   - Real-time data
   - Cache layer
   - Fast lookups
-- Redis (caching)
-  - Session data
-  - Rate limiting
-  - Temporary storage
-
-B. Message Queue:
-- Kafka clusters
-  - Sharded topics
-  - Message routing
-  - Event streaming
-- Redis Pub/Sub
-  - Real-time updates
-  - Presence information
-  - Status changes
 
 C. Media Handling:
-- WebRTC media servers
+- SFU WebRTC media servers
 - Track multiplexing
 - Media processing
 - Recording storage
-
-6. API Structure:
-
-A. System APIs:
-```rust
-pub trait SystemAPI {
-    async fn call_vm(&self, pid: Uuid, text: String) -> Result<String>;
-    async fn wait(&self, pid: Uuid, seconds: i32) -> Result<()>;
-    async fn save_file(&self, pid: Uuid, data: Vec<u8>) -> Result<FileInfo>;
-    async fn execute_sql(&self, pid: Uuid, sql: String) -> Result<QueryResult>;
-}
-```
-
-B. Room APIs:
-```rust
-pub trait RoomAPI {
-    async fn create_room(&self, config: RoomConfig) -> Result<Room>;
-    async fn join_room(&self, room_id: Uuid, user_id: Uuid) -> Result<Connection>;
-    async fn publish_track(&self, track: TrackInfo) -> Result<Track>;
-    async fn subscribe_track(&self, track_id: Uuid) -> Result<Subscription>;
-}
-```
-
-C. Message APIs:
-```rust
-pub trait MessageAPI {
-    async fn send_message(&self, message: Message) -> Result<MessageId>;
-    async fn get_messages(&self, filter: MessageFilter) -> Result<Vec<Message>>;
-    async fn update_status(&self, message_id: Uuid, status: Status) -> Result<()>;
-}
-```
 
 7. Monitoring & Operations:
 
@@ -189,7 +521,7 @@ B. Scaling Operations:
 
 C. Security:
 - Authentication
-- Authorization
+- Authorization (zitadel API)
 - Rate limiting
 - Data encryption
 - Audit logging
@@ -556,3 +888,4 @@ migrate them to rust compatible,
 - I NEED FULL CODE SOLUTION IN PROFESSIONAL TESTABLE RUST CODE: if you need split answer in several parts, but provide ENTIRE CODE. Complete working balenced aserver.  IMPORTANTE: Generate the project in a .sh shell script output with cat, of entire code base to be restored, no placeholder neither TODOS. 
 - VERY IMPORNTANT: DO NOT put things like  // Add other system routes... you should WRITE ACUTAL CODE
 - Need tests for every line of code written.
+- single project organized in folders.

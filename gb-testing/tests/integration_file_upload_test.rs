@@ -40,9 +40,7 @@ async fn test_successful_file_upload() -> Result<()> {
     let app_state = web::Data::new(AppState {
         minio_client: Some(minio_client.clone()),
         config: None,
-        db_pool: None,
-        kafka_producer: None,
-        redis_pool: None,
+        db_pool: None
     });
 
     let app = 
@@ -90,30 +88,6 @@ async fn test_successful_file_upload() -> Result<()> {
 
     assert!(object_exists, "Uploaded file should exist in MinIO");
 
-    // Verify file content using object-based API
-    // let get_object_args = GetObjectArgs::new(bucket_name, object_name)?;
-    // let get_object_result = minio_client.get_object(bucket_name, object_name);
-
-    // let mut object_content = Vec::new();
-    // get_object_result.read_to_end(&mut object_content)?;
-
-    // assert_eq!(
-    //     String::from_utf8_lossy(&object_content),
-    //     String::from_utf8_lossy(&file_content),
-    //     "File content should match"
-    // );
-    // // Cleanup test bucket
-    // let bucket_name = "file-upload-rust-bucket";
-
-    // // List all objects and delete them using object-based API
-    // let list_objects_args = GetObjectArgs:new(bucket_name)?;
-    // let objects = minio_client.list_objects(&list_objects_args).await?;
-
-    // for obj in objects.contents {
-    //     // Using object-based API for remove_object
-    //     let remove_object_args = RemoveObjectArgs::new(bucket_name, &obj.key)?;
-    //     minio_client.remove_object(&remove_object_args).await?;
-    // }
 
     Ok(())
 }

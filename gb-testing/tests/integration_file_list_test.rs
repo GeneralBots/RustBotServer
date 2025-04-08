@@ -61,9 +61,7 @@ async fn test_successful_file_listing() -> Result<(), Box<dyn std::error::Error>
     let app_state = web::Data::new(AppState {
         minio_client: Some(minio_client.clone()),
         config: None,
-        db_pool: None,
-        kafka_producer: None,
-        redis_pool: None,
+        db_pool: None
     });
 
     let app = test::init_service(App::new().app_data(app_state.clone()).service(list_file)).await;
