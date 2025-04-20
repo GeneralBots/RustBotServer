@@ -11,6 +11,9 @@ use flate2::read::GzDecoder;
 use tar::Archive;
 use zip::ZipArchive;
 
+// TODO: https://helpcenter.onlyoffice.com/docs/installation/docs-community-install-ubuntu.aspx
+
+
 const INSTALL_DIR: &str = "/opt/gbo";
 const TEMP_DIR: &str = "/tmp/gbotemp";
 
