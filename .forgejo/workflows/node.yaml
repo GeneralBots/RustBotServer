@@ -1,16 +1,19 @@
-name: gbserver Rust CI/CD
+name: GBCI
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: gbo
     
     steps:
+    - name: Disable SSL verification (temporary)
+      run: git config --global http.sslVerify false
+
     - uses: actions/checkout@v4
 
     - name: Install Rust
