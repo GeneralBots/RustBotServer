@@ -17,11 +17,12 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install Rust
-    - uses: wackbyte/rust-toolchain@trunk
+      uses: wackbyte/rust-toolchain@trunk
       with:
         toolchain: stable
         
-     - run: cargo test --all-features
+    - name: Run tests
+      run: cargo test --all-features
 
     - name: Cache cargo registry
       uses: actions/cache@v3
