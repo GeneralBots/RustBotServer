@@ -20,8 +20,8 @@ jobs:
     - uses: wackbyte/rust-toolchain@trunk
       with:
         toolchain: stable
+     - run: cargo test --all-features
 
-      - run: cargo test --all-features
     - name: Cache cargo registry
       uses: actions/cache@v3
       with:
