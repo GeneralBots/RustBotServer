@@ -1,70 +1,130 @@
 #!/bin/bash
-PARAM_TENANT="pragmatismo"
-PARAM_STALWART_VERSION="latest"
-PARAM_OAUTH_PROVIDER="zitadel"
-PARAM_OAUTH_CLIENT_ID="SEU_CLIENT_ID"
-PARAM_OAUTH_CLIENT_SECRET="SEU_CLIENT_SECRET"
-PARAM_OAUTH_AUTH_ENDPOINT="https://login.pragmatismo.com.br/oauth/v2/authorize"
-PARAM_OAUTH_TOKEN_ENDPOINT="https://login.pragmatismo.com.br/oauth/v2/token"
-PARAM_OAUTH_USERINFO_ENDPOINT="https://login.pragmatismo.com.br/userinfo"
-PARAM_OAUTH_SCOPE="openid email profile"
-PARAM_STALWART_PORT="8080"
 
-BIN_PATH="/opt/gbo/bin"
-CONF_PATH="/opt/gbo/conf.d"
-LOGS_PATH="/opt/gbo/tenants/$PARAM_TENANT/stalwart/logs"
+PUBLIC_INTERFACE="eth0"                 # Your host's public network interface
 
-mkdir -p "${BIN_PATH}" "${CONF_PATH}" "${LOGS_PATH}"
-chmod -R 770 "${BIN_PATH}" "${CONF_PATH}" "${LOGS_PATH}"
-chown -R 100999:100999 "${BIN_PATH}" "${CONF_PATH}" "${LOGS_PATH}"
+# Enable IP forwarding
+echo "[HOST] Enabling IP forwarding..."
+echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
 
-lxc launch images:debian/12 "${PARAM_TENANT}-stalwart" -c security.privileged=true
+# Configure firewall
+echo "[HOST] Configuring firewall..."
+sudo iptables -A FORWARD -i $PUBLIC_INTERFACE -o lxcbr0 -p tcp -m multiport --dports 25,80,110,143,465,587,993,995,4190 -j ACCEPT
+sudo iptables -A FORWARD -i lxcbr0 -o $PUBLIC_INTERFACE -m state --state RELATED,ESTABLISHED -j ACCEPT
+sudo iptables -t nat -A POSTROUTING -o $PUBLIC_INTERFACE -j MASQUERADE
+
+# Save iptables rules permanently (adjust based on your distro)
+if command -v iptables-persistent >/dev/null; then
+    sudo iptables-save | sudo tee /etc/iptables/rules.v4
+fi
+
+# ------------------------- CONTAINER SETUP -------------------------
+
+# Create directory structure
+echo "[CONTAINER] Creating directories..."
+HOST_BASE="/opt/gbo/tenants/$PARAM_TENANT/email"
+HOST_DATA="$HOST_BASE/data"
+HOST_CONF="$HOST_BASE/conf"
+HOST_LOGS="$HOST_BASE/logs"
+
+sudo mkdir -p "$HOST_DATA" "$HOST_CONF" "$HOST_LOGS"
+sudo chmod -R 750 "$HOST_BASE"
+
+# Launch container
+echo "[CONTAINER] Launching LXC container..."
+lxc launch images:debian/12 "$PARAM_TENANT"-email -c security.privileged=true
 sleep 15
 
-lxc config device add "${PARAM_TENANT}-stalwart" logs disk source="${LOGS_PATH}" path=/var/log/stalwart
-
-lxc exec "${PARAM_TENANT}-stalwart" -- bash -c '
+# Install Stalwart Mail
+echo "[CONTAINER] Installing Stalwart Mail..."
+lxc exec "$PARAM_TENANT"-email -- bash -c "
 apt-get update && apt-get install -y wget
-wget -c https://github.com/stalwartlabs/mail-server/releases/download/'"${PARAM_STALWART_VERSION}"'/stalwart-mail-x86_64-unknown-linux-gnu.tar.gz -O - | tar -xz -C /usr/local/bin/
+wget -O /tmp/stalwart.tar.gz https://github.com/stalwartlabs/stalwart/releases/download/v0.12.3/stalwart-x86_64-unknown-linux-gnu.tar.gz
+tar -xzf /tmp/stalwart.tar.gz -C /tmp
+mkdir -p /opt/gbo/bin
+mv /tmp/stalwart /opt/gbo/bin/stalwart-mail
+chmod +x /opt/gbo/bin/stalwart-mail
+rm /tmp/stalwart.tar.gz
 
-useradd -r -s /bin/false stalwart || true
-mkdir -p /var/log/stalwart /opt/gbo/bin /opt/gbo/conf.d
-chown -R stalwart:stalwart /var/log/stalwart /opt/gbo/bin /opt/gbo/conf.d
+useradd --system --no-create-home --shell /bin/false email
+mkdir -p /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
+chown -R email:email /opt/gbo/data /opt/gbo/conf /opt/gbo/logs /opt/gbo/bin
+"
 
-cat > /opt/gbo/conf.d/stalwart.toml <<EOF
-[oauth]
-provider = "'"${PARAM_OAUTH_PROVIDER}"'"
-client_id = "'"${PARAM_OAUTH_CLIENT_ID}"'"
-client_secret = "'"${PARAM_OAUTH_CLIENT_SECRET}"'"
-authorization_endpoint = "'"${PARAM_OAUTH_AUTH_ENDPOINT}"'"
-token_endpoint = "'"${PARAM_OAUTH_TOKEN_ENDPOINT}"'"
-userinfo_endpoint = "'"${PARAM_OAUTH_USERINFO_ENDPOINT}"'"
-scope = "'"${PARAM_OAUTH_SCOPE}"'"
-EOF
+# Set permissions
+echo "[CONTAINER] Setting permissions..."
+EMAIL_UID=$(lxc exec "$PARAM_TENANT"-email -- id -u email)
+EMAIL_GID=$(lxc exec "$PARAM_TENANT"-email -- id -g email)
+HOST_EMAIL_UID=$((100000 + EMAIL_UID))
+HOST_EMAIL_GID=$((100000 + EMAIL_GID))
+sudo chown -R "$HOST_EMAIL_UID:$HOST_EMAIL_GID" "$HOST_BASE"
 
-cat > /etc/systemd/system/stalwart.service <<EOF
+# Mount directories
+echo "[CONTAINER] Mounting directories..."
+lxc config device add "$PARAM_TENANT"-email emaildata disk source="$HOST_DATA" path=/opt/gbo/data
+lxc config device add "$PARAM_TENANT"-email emailconf disk source="$HOST_CONF" path=/opt/gbo/conf
+lxc config device add "$PARAM_TENANT"-email emaillogs disk source="$HOST_LOGS" path=/opt/gbo/logs
+
+# Create systemd service
+echo "[CONTAINER] Creating email service..."
+lxc exec "$PARAM_TENANT"-email -- bash -c "
+cat > /etc/systemd/system/email.service <<EOF
 [Unit]
-Description=Stalwart Mail Server
+Description=Email Service
 After=network.target
 
 [Service]
 Type=simple
-User=stalwart
-Group=stalwart
-ExecStart=/usr/local/bin/stalwart-mail --config /opt/gbo/conf.d/stalwart.toml
-StandardOutput=append:/var/log/stalwart/output.log
-StandardError=append:/var/log/stalwart/error.log
+User=email
+Group=email
+ExecStart=/opt/gbo/bin/stalwart-mail --config /opt/gbo/conf/config.toml
+WorkingDirectory=/opt/gbo/data
+StandardOutput=append:/opt/gbo/logs/output.log
+StandardError=append:/opt/gbo/logs/error.log
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable stalwart
-systemctl start stalwart
-'
+systemctl enable email
+systemctl start email
+"
 
-lxc config device remove "${PARAM_TENANT}-stalwart" stalwart-proxy 2>/dev/null || true
-lxc config device add "${PARAM_TENANT}-stalwart" stalwart-proxy proxy \
-    listen=tcp:0.0.0.0:"${PARAM_STALWART_PORT}" \
-    connect=tcp:127.0.0.1:"${PARAM_STALWART_PORT}"
+# ------------------------- PORT FORWARDING -------------------------
+
+# Get container IP
+CONTAINER_IP=$(lxc list "$PARAM_TENANT"-email -c 4 --format csv | awk '{print $1}')
+
+# Setup port forwarding
+echo "[HOST] Setting up port forwarding..."
+declare -A PORTS=(
+  ["email"]="$PARAM_EMAIL_SMTP_PORT"
+  ["http"]="$PARAM_EMAIL_HTTP_PORT" 
+  ["imap"]="$PARAM_EMAIL_IMAP_PORT"
+  ["imaps"]="$PARAM_EMAIL_IMAPS_PORT"
+  ["pop3"]="$PARAM_EMAIL_POP3_PORT"
+  ["pop3s"]="$PARAM_EMAIL_POP3S_PORT"
+  ["submission"]="$PARAM_EMAIL_SUBMISSION_PORT"
+  ["submissions"]="$PARAM_EMAIL_SUBMISSIONS_PORT"
+  ["sieve"]="$PARAM_EMAIL_SIEVE_PORT"
+)
+
+for service in "${!PORTS[@]}"; do
+    # Container proxy device
+    lxc config device remove "$PARAM_TENANT"-email "$service-proxy" 2>/dev/null || true
+    lxc config device add "$PARAM_TENANT"-email "$service-proxy" proxy \
+      listen=tcp:0.0.0.0:"${PORTS[$service]}" \
+      connect=tcp:127.0.0.1:"${PORTS[$service]}"
+    
+    # Host port forwarding
+    sudo iptables -t nat -A PREROUTING -i $PUBLIC_INTERFACE -p tcp --dport "${PORTS[$service]}" -j DNAT --to-destination "$CONTAINER_IP":"${PORTS[$service]}"
+done
+
+lxc exec $PARAM_TENANT-email -- sudo setcap 'cap_net_bind_service=+ep' /opt/gbo/bin/stalwart-mail
+
+# Save iptables rules again
+if command -v iptables-persistent >/dev/null; then
+    sudo iptables-save | sudo tee /etc/iptables/rules.v4
+fi
