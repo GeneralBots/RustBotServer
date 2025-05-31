@@ -1,14 +1,4 @@
-minio version RELEASE.2025-02-28T09-55-16Z (commit-id=8c2c92f7afdc8386b000c0cb57ecec2ee1f5bcb0)
-
-i need this version to be installed in the container in this script upate main stuctur
-
 #!/bin/bash
-PARAM_TENANT=""
-PARAM_USER=""
-PARAM_PASSWORD=""
-PARAM_API_PORT=""
-PARAM_PORT=""
-
 STORAGE_PATH="/opt/gbo/tenants/$PARAM_TENANT/drive/data"
 LOGS_PATH="/opt/gbo/tenants/$PARAM_TENANT/drive/logs"
 
@@ -40,9 +30,9 @@ After=network.target
 Type=simple
 User=minio-user
 Group=minio-user
-Environment="MINIO_ROOT_USER='"${PARAM_USER}"'"
-Environment="MINIO_ROOT_PASSWORD='"${PARAM_PASSWORD}"'"
-ExecStart=/usr/local/bin/minio server --console-address ":'"${PARAM_PORT}"'" /data
+Environment="MINIO_ROOT_USER='"${PARAM_DRIVE_USER}"'"
+Environment="MINIO_ROOT_PASSWORD='"${PARAM_DRIVE_PASSWORD}"'"
+ExecStart=/usr/local/bin/minio server --console-address ":'"${PARAM_DRIVE_PORT}"'" /data
 StandardOutput=append:/var/log/minio/output.log
 StandardError=append:/var/log/minio/error.log
 
@@ -57,10 +47,10 @@ systemctl start minio
 
 lxc config device remove "${PARAM_TENANT}-drive" minio-proxy 2>/dev/null || true
 lxc config device add "${PARAM_TENANT}-drive" minio-proxy proxy \
-    listen=tcp:0.0.0.0:"${PARAM_API_PORT}" \
-    connect=tcp:127.0.0.1:"${PARAM_API_PORT}"
+    listen=tcp:0.0.0.0:"${PARAM_DRIVE_API_PORT}" \
+    connect=tcp:127.0.0.1:"${PARAM_DRIVE_API_PORT}"
 
 lxc config device remove "${PARAM_TENANT}-drive" console-proxy 2>/dev/null || true
 lxc config device add "${PARAM_TENANT}-drive" console-proxy proxy \
-    listen=tcp:0.0.0.0:"${PARAM_PORT}" \
-    connect=tcp:127.0.0.1:"${PARAM_PORT}"
+    listen=tcp:0.0.0.0:"${PARAM_DRIVE_PORT}" \
+    connect=tcp:127.0.0.1:"${PARAM_DRIVE_PORT}"
