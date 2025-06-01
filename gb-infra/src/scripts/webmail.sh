@@ -76,6 +76,8 @@ Group=www-data
 WorkingDirectory=$RC_PATH
 ExecStart=/usr/bin/php -S 0.0.0.0:$PARAM_WEBMAIL_PORT -t $RC_PATH/public_html
 Restart=always
+StandardOutput=append:/var/log/roundcube/stdout.log
+StandardError=append:/var/log/roundcube/stderr.log
 
 [Install]
 WantedBy=multi-user.target
