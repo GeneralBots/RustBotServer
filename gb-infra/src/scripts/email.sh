@@ -44,7 +44,6 @@ tar -xzf /tmp/stalwart.tar.gz -C /tmp
 mkdir -p /opt/gbo/bin
 mv /tmp/stalwart /opt/gbo/bin/stalwart-mail
 chmod +x /opt/gbo/bin/stalwart-mail
-rm /tmp/stalwart.tar.gz
 
 useradd --system --no-create-home --shell /bin/false email
 mkdir -p /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
@@ -68,6 +67,8 @@ lxc config device add "$PARAM_TENANT"-email emaillogs disk source="$HOST_LOGS" p
 # Create systemd service
 echo "[CONTAINER] Creating email service..."
 lxc exec "$PARAM_TENANT"-email -- bash -c "
+
+
 cat > /etc/systemd/system/email.service <<EOF
 [Unit]
 Description=Email Service
@@ -78,7 +79,6 @@ Type=simple
 User=email
 Group=email
 ExecStart=/opt/gbo/bin/stalwart-mail --config /opt/gbo/conf/config.toml
-WorkingDirectory=/opt/gbo/data
 StandardOutput=append:/opt/gbo/logs/output.log
 StandardError=append:/opt/gbo/logs/error.log
 Restart=always

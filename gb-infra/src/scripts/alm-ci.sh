@@ -6,7 +6,7 @@ ALM_CI_LABELS="gbo"
 FORGEJO_RUNNER_VERSION="v6.3.1"
 FORGEJO_RUNNER_BINARY="forgejo-runner-6.3.1-linux-amd64"
 CONTAINER_IMAGE="images:debian/12"
-
+ 
 # Paths
 HOST_BASE="/opt/gbo/tenants/$PARAM_TENANT/alm-ci"
 HOST_DATA="$HOST_BASE/data"
