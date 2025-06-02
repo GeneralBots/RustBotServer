@@ -32,7 +32,8 @@ lxc config device add "$PARAM_TENANT"-alm almlogs disk source="$HOST_LOGS" path=
 
 lxc exec "$PARAM_TENANT"-alm -- bash -c "
 mkdir -p /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
-chown -R alm:alm /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
+chown -R alm:alm /opt/gbo
+
 
 cat > /etc/systemd/system/alm.service <<EOF
 [Unit]
