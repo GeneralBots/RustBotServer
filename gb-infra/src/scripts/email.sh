@@ -35,16 +35,15 @@ echo "[CONTAINER] Launching LXC container..."
 lxc launch images:debian/12 "$PARAM_TENANT"-email -c security.privileged=true
 sleep 15
 
-# Install Stalwart Mail
 echo "[CONTAINER] Installing Stalwart Mail..."
 lxc exec "$PARAM_TENANT"-email -- bash -c "
-apt-get update && apt-get install -y wget
-wget -O /tmp/stalwart.tar.gz https://github.com/stalwartlabs/stalwart/releases/download/v0.12.3/stalwart-x86_64-unknown-linux-gnu.tar.gz
+apt-get update && apt-get install -y wget libcap2-bin
+wget -O /tmp/stalwart.tar.gz https://github.com/stalwartlabs/stalwart/releases/download/v0.11.8/stalwart-mail-x86_64-unknown-linux-gnu.tar.gz
 tar -xzf /tmp/stalwart.tar.gz -C /tmp
 mkdir -p /opt/gbo/bin
-mv /tmp/stalwart /opt/gbo/bin/stalwart-mail
+mv /tmp/stalwart-mail /opt/gbo/bin/stalwart-mail
 chmod +x /opt/gbo/bin/stalwart-mail
-
+rm /tmp/stalwart.tar.gz
 useradd --system --no-create-home --shell /bin/false email
 mkdir -p /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
 chown -R email:email /opt/gbo/data /opt/gbo/conf /opt/gbo/logs /opt/gbo/bin
@@ -67,7 +66,7 @@ lxc config device add "$PARAM_TENANT"-email emaillogs disk source="$HOST_LOGS" p
 # Create systemd service
 echo "[CONTAINER] Creating email service..."
 lxc exec "$PARAM_TENANT"-email -- bash -c "
-
+chown -R email:email /opt/gbo/data /opt/gbo/conf /opt/gbo/logs /opt/gbo/bin
 
 cat > /etc/systemd/system/email.service <<EOF
 [Unit]
@@ -79,8 +78,7 @@ Type=simple
 User=email
 Group=email
 ExecStart=/opt/gbo/bin/stalwart-mail --config /opt/gbo/conf/config.toml
-StandardOutput=append:/opt/gbo/logs/output.log
-StandardError=append:/opt/gbo/logs/error.log
+WorkingDirectory=/opt/gbo/bin
 Restart=always
 
 [Install]
@@ -121,8 +119,6 @@ for service in "${!PORTS[@]}"; do
     # Host port forwarding
     sudo iptables -t nat -A PREROUTING -i $PUBLIC_INTERFACE -p tcp --dport "${PORTS[$service]}" -j DNAT --to-destination "$CONTAINER_IP":"${PORTS[$service]}"
 done
-
-lxc exec $PARAM_TENANT-email -- sudo setcap 'cap_net_bind_service=+ep' /opt/gbo/bin/stalwart-mail
 
 # Save iptables rules again
 if command -v iptables-persistent >/dev/null; then

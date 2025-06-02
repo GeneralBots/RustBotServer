@@ -33,10 +33,6 @@ for i in {1..10}; do
     sleep 3
 done
 
-# Add directory mappings
-lxc config device add "$CONTAINER_NAME" almdata disk source="$HOST_DATA" path=/opt/gbo/data || exit 1
-lxc config device add "$CONTAINER_NAME" almconf disk source="$HOST_CONF" path=/opt/gbo/conf || exit 1
-lxc config device add "$CONTAINER_NAME" almlogs disk source="$HOST_LOGS" path=/opt/gbo/logs || exit 1
 
 # Container setup
 lxc exec "$CONTAINER_NAME" -- bash -c "
@@ -61,6 +57,24 @@ cd \"$BIN_PATH\"
     --token \"$PARAM_ALM_CI_TOKEN\" \\
     --labels \"$ALM_CI_LABELS\" || { echo 'Runner registration failed'; exit 1; }
 
+chown -R gbuser:gbuser /opt/gbo/data /opt/gbo/conf /opt/gbo/logs /opt/gbo/bin
+"
+
+# Set permissions
+echo "[CONTAINER] Setting permissions..."
+EMAIL_UID=$(lxc exec "$PARAM_TENANT"-alm-ci -- id -u gbuser)
+EMAIL_GID=$(lxc exec "$PARAM_TENANT"-alm-ci -- id -g gbuser)
+HOST_EMAIL_UID=$((100000 + EMAIL_UID))
+HOST_EMAIL_GID=$((100000 + EMAIL_GID))
+sudo chown -R "$HOST_EMAIL_UID:$HOST_EMAIL_GID" "$HOST_BASE"
+
+
+# Add directory mappings
+lxc config device add "$CONTAINER_NAME" almdata disk source="$HOST_DATA" path=/opt/gbo/data || exit 1
+lxc config device add "$CONTAINER_NAME" almconf disk source="$HOST_CONF" path=/opt/gbo/conf || exit 1
+lxc config device add "$CONTAINER_NAME" almlogs disk source="$HOST_LOGS" path=/opt/gbo/logs || exit 1
+
+lxc exec "$CONTAINER_NAME" -- bash -c "
 # Create systemd service
 cat > /etc/systemd/system/alm-ci.service <<EOF
 [Unit]
