@@ -7,6 +7,9 @@ rsync -avz --progress --bwlimit=0 -e "ssh -p 22 -T -c aes128-gcm@openssh.com -o 
 
 
 # Security
+apt update && apt install -y fail2ban 
+systemctl enable fail2ban
+
 
 apt update && apt install -y fail2ban iptables-persistent
 

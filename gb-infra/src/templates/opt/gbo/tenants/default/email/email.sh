@@ -95,32 +95,35 @@ systemctl start email
 # Get container IP
 CONTAINER_IP=$(lxc list "$PARAM_TENANT"-email -c 4 --format csv | awk '{print $1}')
 
-# Setup port forwarding
-echo "[HOST] Setting up port forwarding..."
+
 declare -A PORTS=(
-  ["email"]="$PARAM_EMAIL_SMTP_PORT"
-  ["http"]="$PARAM_EMAIL_HTTP_PORT" 
-  ["imap"]="$PARAM_EMAIL_IMAP_PORT"
-  ["imaps"]="$PARAM_EMAIL_IMAPS_PORT"
-  ["pop3"]="$PARAM_EMAIL_POP3_PORT"
-  ["pop3s"]="$PARAM_EMAIL_POP3S_PORT"
-  ["submission"]="$PARAM_EMAIL_SUBMISSION_PORT"
-  ["submissions"]="$PARAM_EMAIL_SUBMISSIONS_PORT"
-  ["sieve"]="$PARAM_EMAIL_SIEVE_PORT"
+    ["smtp"]="25"
+    ["submission"]="587"
+    ["submissions"]="465"
+    ["imap"]="143"
+    ["imaps"]="993"
+    ["sieve"]="4190"
 )
 
 for service in "${!PORTS[@]}"; do
-    # Container proxy device
-    lxc config device remove "$PARAM_TENANT"-email "$service-proxy" 2>/dev/null || true
-    lxc config device add "$PARAM_TENANT"-email "$service-proxy" proxy \
-      listen=tcp:0.0.0.0:"${PORTS[$service]}" \
-      connect=tcp:127.0.0.1:"${PORTS[$service]}"
+    port="${PORTS[$service]}"
     
-    # Host port forwarding
-    sudo iptables -t nat -A PREROUTING -i $PUBLIC_INTERFACE -p tcp --dport "${PORTS[$service]}" -j DNAT --to-destination "$CONTAINER_IP":"${PORTS[$service]}"
+    # Add LXC proxy device
+    lxc config device remove pragmatismo-email "${service}-proxy" 2>/dev/null || true
+    lxc config device add pragmatismo-email "${service}-proxy" proxy \
+        listen=tcp:0.0.0.0:"${port}" \
+        connect=tcp:"${CONTAINER_IP}":"${port}" \
+        bind=host \
+        nat=false 
+
+    # Add correct iptables rules
+    sudo iptables -t nat -A PREROUTING -i $PUBLIC_INTERFACE -p tcp --dport ${port} -j DNAT --to-destination ${CONTAINER_IP}:${port}
+    sudo iptables -A FORWARD -p tcp --dport ${port} -j ACCEPT
 done
 
-# Save iptables rules again
-if command -v iptables-persistent >/dev/null; then
-    sudo iptables-save | sudo tee /etc/iptables/rules.v4
-fi
+# Enable IP forwarding
+echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+# Save rules
+sudo iptables-save | sudo tee /etc/iptables/rules.v4
