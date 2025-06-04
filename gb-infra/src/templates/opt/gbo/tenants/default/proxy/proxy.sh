@@ -48,8 +48,8 @@ Description=Caddy
 After=network.target
 
 [Service]
-User=caddy
-Group=caddy
+User=root
+Group=root
 ExecStart=/usr/local/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
 ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 TimeoutStopSec=5s
