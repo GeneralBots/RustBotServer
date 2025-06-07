@@ -6,13 +6,14 @@ HOST_CONF="$HOST_BASE/conf"
 HOST_LOGS="$HOST_BASE/logs"
 
 PARAM_RC_VERSION="1.6.6"
-RC_PATH="$HOST_DATA/wwwroot"
 
 mkdir -p "$HOST_DATA" "$HOST_CONF" "$HOST_LOGS"
 chmod -R 750 "$HOST_BASE"
 
 lxc launch images:debian/12 "$PARAM_TENANT"-webmail -c security.privileged=true
 sleep 15
+
+RC_PATH="/opt/gbo/data"
 
 lxc exec "$PARAM_TENANT"-webmail -- bash -c '
 # Install prerequisites
@@ -39,19 +40,19 @@ apt install -y \
 
 # Restart PHP-FPM
 systemctl restart php8.1-fpm
-if [ ! -d '"$RC_PATH"' ]; then
-    mkdir -p '"$RC_PATH"'
-    wget -q https://github.com/roundcube/roundcubemail/releases/download/'"$PARAM_RC_VERSION"'/roundcubemail-'"$PARAM_RC_VERSION"'-complete.tar.gz
-    tar -xzf roundcubemail-*.tar.gz
-    mv roundcubemail-'"$PARAM_RC_VERSION"'/* '"$RC_PATH"'
-    rm -rf roundcubemail-*
-fi
 
-chown -R www-data:www-data '"$RC_PATH"'
+mkdir -p '"$RC_PATH"'
+wget -q https://github.com/roundcube/roundcubemail/releases/download/'"$PARAM_RC_VERSION"'/roundcubemail-'"$PARAM_RC_VERSION"'-complete.tar.gz
+tar -xzf roundcubemail-*.tar.gz
+mv roundcubemail-'"$PARAM_RC_VERSION"'/* '"$RC_PATH"'
+rm -rf roundcubemail-*
+
+mkdir -p /opt/gbo/logs
+
 chmod 750 '"$RC_PATH"'
 find '"$RC_PATH"' -type d -exec chmod 750 {} \;
 find '"$RC_PATH"' -type f -exec chmod 640 {} \;
-mkdir -p '"$HOST_LOGS"'
+
 '
 
 WEBMAIL_UID=$(lxc exec "$PARAM_TENANT"-webmail -- id -u www-data)
@@ -60,11 +61,11 @@ HOST_WEBMAIL_UID=$((100000 + WEBMAIL_UID))
 HOST_WEBMAIL_GID=$((100000 + WEBMAIL_GID))
 chown -R "$HOST_WEBMAIL_UID:$HOST_WEBMAIL_GID" "$HOST_BASE"
 
-lxc config device add "$PARAM_TENANT"-webmail webmaildata disk source="$HOST_DATA" path=/var/lib/roundcube
-lxc config device add "$PARAM_TENANT"-webmail webmailconf disk source="$HOST_CONF" path=/etc/roundcube
-lxc config device add "$PARAM_TENANT"-webmail webmaillogs disk source="$HOST_LOGS" path=/var/log/roundcube
+lxc config device add "$PARAM_TENANT"-webmail webmaildata disk source="$HOST_DATA" path="$RC_PATH"
+lxc config device add "$PARAM_TENANT"-webmail webmaillogs disk source="$HOST_LOGS" path=/opt/gbo/logs
 
 lxc exec "$PARAM_TENANT"-webmail -- bash -c "
+chown -R www-data:www-data '"$RC_PATH"' /opt/gbo/logs
 cat > /etc/systemd/system/webmail.service <<EOF
 [Unit]
 Description=Roundcube Webmail
@@ -74,10 +75,10 @@ After=network.target php8.1-fpm.service
 User=www-data
 Group=www-data
 WorkingDirectory=$RC_PATH
-ExecStart=/usr/bin/php -S 0.0.0.0:$PARAM_WEBMAIL_PORT -t $RC_PATH/public_html
+ExecStart=/usr/bin/php -S 0.0.0.0:$PARAM_WEBMAIL_PORT -t $RC_PATH/wwwroot/public_html
 Restart=always
-StandardOutput=append:/var/log/roundcube/stdout.log
-StandardError=append:/var/log/roundcube/stderr.log
+StandardOutput=append:/opt/gbo/logs/stdout.log
+StandardError=append:/opt/gbo/logs/stderr.log
 
 [Install]
 WantedBy=multi-user.target

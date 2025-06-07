@@ -1,79 +1,56 @@
 #!/bin/bash
-
 HOST_BASE="/opt/gbo/tenants/$PARAM_TENANT/proxy"
 HOST_DATA="$HOST_BASE/data"
 HOST_CONF="$HOST_BASE/conf"
 HOST_LOGS="$HOST_BASE/logs"
-
-mkdir -p "$HOST_DATA" "$HOST_CONF" "$HOST_LOGS"
-chmod -R 750 "$HOST_BASE"
+mkdir -p "$HOST_BASE" "$HOST_DATA" "$HOST_CONF" "$HOST_LOGS"
+chmod 750 "$HOST_BASE" "$HOST_DATA" "$HOST_CONF" "$HOST_LOGS"
 
 lxc launch images:debian/12 "$PARAM_TENANT"-proxy -c security.privileged=true
 sleep 15
 
 lxc exec "$PARAM_TENANT"-proxy -- bash -c "
-apt-get update && apt-get install -y curl libcap2-bin
-curl -sL \"https://github.com/caddyserver/caddy/releases/download/v2.10.0-beta.3/caddy_2.10.0-beta.3_linux_amd64.tar.gz\" | tar -C /usr/local/bin -xz caddy
-chmod 755 /usr/local/bin/caddy
-setcap 'cap_net_bind_service=+ep' /usr/local/bin/caddy
-useradd --system --no-create-home --shell /usr/sbin/nologin caddy
+mkdir -p /opt/gbo/{bin,data,conf,logs}
+apt-get update && apt-get install -y wget libcap2-bin
+wget -q https://github.com/caddyserver/caddy/releases/download/v2.10.0-beta.3/caddy_2.10.0-beta.3_linux_amd64.tar.gz
+tar -xzf caddy_2.10.0-beta.3_linux_amd64.tar.gz -C /opt/gbo/bin
+rm caddy_2.10.0-beta.3_linux_amd64.tar.gz
+chmod 750 /opt/gbo/bin/caddy
+setcap 'cap_net_bind_service=+ep' /opt/gbo/bin/caddy
+useradd --system --shell /usr/sbin/nologin gbuser
+chown -R gbuser:gbuser /opt/gbo/{bin,data,conf,logs}
 "
 
-CADDY_UID=$(lxc exec "$PARAM_TENANT"-proxy -- id -u caddy)
-CADDY_GID=$(lxc exec "$PARAM_TENANT"-proxy -- id -g caddy)
-HOST_CADDY_UID=$((100000 + CADDY_UID))
-HOST_CADDY_GID=$((100000 + CADDY_GID))
-chown -R "$HOST_CADDY_UID:$HOST_CADDY_GID" "$HOST_BASE"
-
-lxc config device add "$PARAM_TENANT"-proxy proxydata disk source="$HOST_DATA" path=/var/lib/caddy
-lxc config device add "$PARAM_TENANT"-proxy proxyconf disk source="$HOST_CONF" path=/etc/caddy
-lxc config device add "$PARAM_TENANT"-proxy proxylogs disk source="$HOST_LOGS" path=/var/log/caddy
+lxc config device add "$PARAM_TENANT"-proxy data disk source="$HOST_DATA" path=/opt/gbo/data
+lxc config device add "$PARAM_TENANT"-proxy conf disk source="$HOST_CONF" path=/opt/gbo/conf
+lxc config device add "$PARAM_TENANT"-proxy logs disk source="$HOST_LOGS" path=/opt/gbo/logs
 
 lxc exec "$PARAM_TENANT"-proxy -- bash -c "
-mkdir -p /var/lib/caddy /etc/caddy /var/log/caddy
-chown -R caddy:caddy /var/lib/caddy /etc/caddy /var/log/caddy
-
-cat > /etc/caddy/Caddyfile <<EOF
-:80 {
-    respond \"Welcome to $PARAM_TENANT Proxy\"
-    log {
-        output file /var/log/caddy/access.log
-    }
-}
-EOF
-
-cat > /etc/systemd/system/caddy.service <<EOF
+cat > /etc/systemd/system/proxy.service <<EOF
 [Unit]
-Description=Caddy
+Description=Proxy
 After=network.target
-
 [Service]
-User=root
-Group=root
-ExecStart=/usr/local/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
-ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
-TimeoutStopSec=5s
-LimitNOFILE=1048576
-LimitNPROC=512
-PrivateTmp=true
-ProtectSystem=full
+User=gbuser
+Group=gbuser
+Environment=XDG_DATA_HOME=/opt/gbo/data
+ExecStart=/opt/gbo/bin/caddy run --config /opt/gbo/conf/config --adapter caddyfile
 AmbientCapabilities=CAP_NET_BIND_SERVICE
-
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 [Install]
 WantedBy=multi-user.target
 EOF
-
 systemctl daemon-reload
-systemctl enable caddy
-systemctl start caddy
+
+chown -R gbuser:gbuser /opt/gbo/{bin,data,conf,logs}
+
+systemctl enable proxy
 "
 
-lxc config device remove "$PARAM_TENANT"-proxy http-proxy 2>/dev/null || true
-lxc config device add "$PARAM_TENANT"-proxy http-proxy proxy \
-    listen=tcp:0.0.0.0:"$PARAM_HTTP_PORT" \
-    connect=tcp:127.0.0.1:"$PARAM_HTTP_PORT"
+for port in 80 443 25 110 143 465 587 993 995; do
+lxc config device remove "$PARAM_TENANT"-proxy "port-$port" 2>/dev/null || true
+lxc config device add "$PARAM_TENANT"-proxy "port-$port" proxy listen=tcp:0.0.0.0:$port connect=tcp:127.0.0.1:$port
+done
 
-lxc config device remove "$PARAM_TENANT"-proxy https-proxy 2>/dev/null || true
-lxc config device add "$PARAM_TENANT"-proxy https-proxy proxy \
-    listen=tcp:0.0.0.0:"$PARAM_HTTPS_PORT" \
-    connect=tcp:127.0.0.1:"$PARAM_HTTPS_PORT"
+lxc config set "$PARAM_TENANT"-proxy security.syscalls.intercept.mknod true
+lxc config set "$PARAM_TENANT"-proxy security.syscalls.intercept.setxattr true

@@ -1,22 +1,5 @@
 #!/bin/bash
 
-PUBLIC_INTERFACE="eth0"                 # Your host's public network interface
-
-# Enable IP forwarding
-echo "[HOST] Enabling IP forwarding..."
-echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-
-# Configure firewall
-echo "[HOST] Configuring firewall..."
-sudo iptables -A FORWARD -i $PUBLIC_INTERFACE -o lxcbr0 -p tcp -m multiport --dports 25,80,110,143,465,587,993,995,4190 -j ACCEPT
-sudo iptables -A FORWARD -i lxcbr0 -o $PUBLIC_INTERFACE -m state --state RELATED,ESTABLISHED -j ACCEPT
-sudo iptables -t nat -A POSTROUTING -o $PUBLIC_INTERFACE -j MASQUERADE
-
-# Save iptables rules permanently (adjust based on your distro)
-if command -v iptables-persistent >/dev/null; then
-    sudo iptables-save | sudo tee /etc/iptables/rules.v4
-fi
 
 # ------------------------- CONTAINER SETUP -------------------------
 
@@ -38,11 +21,12 @@ sleep 15
 echo "[CONTAINER] Installing Stalwart Mail..."
 lxc exec "$PARAM_TENANT"-email -- bash -c "
 apt-get update && apt-get install -y wget libcap2-bin
-wget -O /tmp/stalwart.tar.gz https://github.com/stalwartlabs/stalwart/releases/download/v0.11.8/stalwart-mail-x86_64-unknown-linux-gnu.tar.gz
+wget -O /tmp/stalwart.tar.gz https://github.com/stalwartlabs/stalwart/releases/download/v0.12.4/stalwart-x86_64-unknown-linux-gnu.tar.gz
+                             
 tar -xzf /tmp/stalwart.tar.gz -C /tmp
 mkdir -p /opt/gbo/bin
-mv /tmp/stalwart-mail /opt/gbo/bin/stalwart-mail
-chmod +x /opt/gbo/bin/stalwart-mail
+mv /tmp/stalwart /opt/gbo/bin/stalwart
+chmod +x /opt/gbo/bin/stalwart
 rm /tmp/stalwart.tar.gz
 useradd --system --no-create-home --shell /bin/false email
 mkdir -p /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
@@ -90,40 +74,3 @@ systemctl enable email
 systemctl start email
 "
 
-# ------------------------- PORT FORWARDING -------------------------
-
-# Get container IP
-CONTAINER_IP=$(lxc list "$PARAM_TENANT"-email -c 4 --format csv | awk '{print $1}')
-
-
-declare -A PORTS=(
-    ["smtp"]="25"
-    ["submission"]="587"
-    ["submissions"]="465"
-    ["imap"]="143"
-    ["imaps"]="993"
-    ["sieve"]="4190"
-)
-
-for service in "${!PORTS[@]}"; do
-    port="${PORTS[$service]}"
-    
-    # Add LXC proxy device
-    lxc config device remove pragmatismo-email "${service}-proxy" 2>/dev/null || true
-    lxc config device add pragmatismo-email "${service}-proxy" proxy \
-        listen=tcp:0.0.0.0:"${port}" \
-        connect=tcp:"${CONTAINER_IP}":"${port}" \
-        bind=host \
-        nat=false 
-
-    # Add correct iptables rules
-    sudo iptables -t nat -A PREROUTING -i $PUBLIC_INTERFACE -p tcp --dport ${port} -j DNAT --to-destination ${CONTAINER_IP}:${port}
-    sudo iptables -A FORWARD -p tcp --dport ${port} -j ACCEPT
-done
-
-# Enable IP forwarding
-echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-
-# Save rules
-sudo iptables-save | sudo tee /etc/iptables/rules.v4

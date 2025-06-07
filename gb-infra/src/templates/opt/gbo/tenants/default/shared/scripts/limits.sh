@@ -3,8 +3,9 @@
 # Define container limits in an associative array
 declare -A container_limits=(
     # Pattern       Memory    CPU Allowance
+    ["*tables*"]="2048MB:33ms/100ms"
     ["*alm*"]="5126MB:15ms/100ms"
-    ["*email*"]="1024MB:15ms/100ms"
+    ["*email*"]="4024MB:100ms/100ms"
     ["*webmail*"]="1024MB:20ms/100ms"
     ["*bot*"]="2048MB:20ms/100ms"
     ["*drive*"]="1024MB:20ms/100ms"
