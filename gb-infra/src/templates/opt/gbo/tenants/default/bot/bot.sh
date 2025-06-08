@@ -52,33 +52,43 @@ lxc config device add "$PARAM_TENANT"-bot botdata disk source="$HOST_DATA" path=
 lxc config device add "$PARAM_TENANT"-bot botconf disk source="$HOST_CONF" path=/opt/gbo/conf
 lxc config device add "$PARAM_TENANT"-bot botlogs disk source="$HOST_LOGS" path=/opt/gbo/logs
 
-lxc exec "$PARAM_TENANT"-bot -- bash -c "
+lxc exec "$PARAM_TENANT"-bot -- bash -c '
 mkdir -p /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
-chown -R bot:bot /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
+chown -R bot:bot /opt/gbo
 
-sudo apt install -y curl gnupg ca-certificates
+sudo apt update
+sudo apt install -y curl gnupg ca-certificates git
+
+# Install Node.js 22.x
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
 sudo apt install -y nodejs
+
+# Install Xvfb and other dependencies
+sudo apt install -y xvfb libgbm-dev
+
+# Clone and setup bot server
 cd /opt/gbo/data
 git clone https://alm.pragmatismo.com.br/generalbots/botserver.git
 cd botserver
-npm i
+npm install
+npx puppeteer browsers install chrome
 ./node_modules/.bin/tsc
-npx puppeteer browsers install
 
-cat > /etc/systemd/system/bot.service <<EOF
+# Create systemd service
+sudo tee /etc/systemd/system/bot.service > /dev/null <<EOF
 [Unit]
 Description=Bot Server
 After=network.target
 
 [Service]
 User=bot
-Group=root
+Group=bot
 Environment="DISPLAY=:99"
 ExecStartPre=/bin/bash -c "/usr/bin/Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &"
 WorkingDirectory=/opt/gbo/data/botserver
 ExecStart=/usr/bin/node /opt/gbo/data/botserver/boot.mjs
 Restart=always
+RestartSec=5
 StandardOutput=append:/opt/gbo/logs/stdout.log
 StandardError=append:/opt/gbo/logs/stderr.log
 
@@ -86,10 +96,11 @@ StandardError=append:/opt/gbo/logs/stderr.log
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
-systemctl enable bot
-systemctl start bot
-"
+# Reload and start service
+sudo systemctl daemon-reload
+sudo systemctl enable bot.service
+sudo systemctl start bot.service
+'
 
 lxc config device remove "$PARAM_TENANT"-bot bot-proxy 2>/dev/null || true
 lxc config device add "$PARAM_TENANT"-bot bot-proxy proxy \
