@@ -17,7 +17,7 @@ tar -xzf caddy_2.10.0-beta.3_linux_amd64.tar.gz -C /opt/gbo/bin
 rm caddy_2.10.0-beta.3_linux_amd64.tar.gz
 chmod 750 /opt/gbo/bin/caddy
 setcap 'cap_net_bind_service=+ep' /opt/gbo/bin/caddy
-useradd --system --shell /usr/sbin/nologin gbuser
+useradd --create-home --system --shell /usr/sbin/nologin gbuser
 chown -R gbuser:gbuser /opt/gbo/{bin,data,conf,logs}
 "
 
@@ -47,7 +47,7 @@ chown -R gbuser:gbuser /opt/gbo/{bin,data,conf,logs}
 systemctl enable proxy
 "
 
-for port in 80 443 25 110 143 465 587 993 995; do
+for port in 80 443; do
 lxc config device remove "$PARAM_TENANT"-proxy "port-$port" 2>/dev/null || true
 lxc config device add "$PARAM_TENANT"-proxy "port-$port" proxy listen=tcp:0.0.0.0:$port connect=tcp:127.0.0.1:$port
 done

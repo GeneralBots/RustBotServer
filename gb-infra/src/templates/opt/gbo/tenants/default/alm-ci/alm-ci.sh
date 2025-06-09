@@ -38,6 +38,8 @@ done
 lxc exec "$CONTAINER_NAME" -- bash -c "
 set -e
 
+useradd --system --no-create-home --shell /bin/false gbuser
+
 # Update and install dependencies
 apt-get update && apt-get install -y wget || { echo 'Package installation failed'; exit 1; }
 

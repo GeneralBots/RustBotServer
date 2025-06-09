@@ -1,4 +1,21 @@
 #!/bin/bash
+PUBLIC_INTERFACE="eth0"                 # Your host's public network interface
+
+# Enable IP forwarding
+echo "[HOST] Enabling IP forwarding..."
+echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+# Configure firewall
+echo "[HOST] Configuring firewall..."
+sudo iptables -A FORWARD -i $PUBLIC_INTERFACE -o lxcbr0 -p tcp -m multiport --dports 25,80,110,143,465,587,993,995,4190 -j ACCEPT
+sudo iptables -A FORWARD -i lxcbr0 -o $PUBLIC_INTERFACE -m state --state RELATED,ESTABLISHED -j ACCEPT
+sudo iptables -t nat -A POSTROUTING -o $PUBLIC_INTERFACE -j MASQUERADE
+
+# Save iptables rules permanently (adjust based on your distro)
+if command -v iptables-persistent >/dev/null; then
+    sudo iptables-save | sudo tee /etc/iptables/rules.v4
+fi
 
 
 # ------------------------- CONTAINER SETUP -------------------------
@@ -27,7 +44,9 @@ tar -xzf /tmp/stalwart.tar.gz -C /tmp
 mkdir -p /opt/gbo/bin
 mv /tmp/stalwart /opt/gbo/bin/stalwart
 chmod +x /opt/gbo/bin/stalwart
+sudo setcap 'cap_net_bind_service=+ep' /opt/gbo/bin/stalwart
 rm /tmp/stalwart.tar.gz
+
 useradd --system --no-create-home --shell /bin/false email
 mkdir -p /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
 chown -R email:email /opt/gbo/data /opt/gbo/conf /opt/gbo/logs /opt/gbo/bin
@@ -61,7 +80,7 @@ After=network.target
 Type=simple
 User=email
 Group=email
-ExecStart=/opt/gbo/bin/stalwart-mail --config /opt/gbo/conf/config.toml
+ExecStart=/opt/gbo/bin/stalwart --config /opt/gbo/conf/config.toml
 WorkingDirectory=/opt/gbo/bin
 Restart=always
 
@@ -73,4 +92,3 @@ systemctl daemon-reload
 systemctl enable email
 systemctl start email
 "
-

@@ -39,11 +39,11 @@ sudo apt install -y \
 export OPENCV4NODEJS_DISABLE_AUTOBUILD=1
 export OPENCV_LIB_DIR=/usr/lib/x86_64-linux-gnu
 
-useradd --system --no-create-home --shell /bin/false bot
+useradd --system --no-create-home --shell /bin/false gbuser
 "
 
-BOT_UID=$(lxc exec "$PARAM_TENANT"-bot -- id -u bot)
-BOT_GID=$(lxc exec "$PARAM_TENANT"-bot -- id -g bot)
+BOT_UID=$(lxc exec "$PARAM_TENANT"-bot -- id -u gbuser)
+BOT_GID=$(lxc exec "$PARAM_TENANT"-bot -- id -g gbuser)
 HOST_BOT_UID=$((100000 + BOT_UID))
 HOST_BOT_GID=$((100000 + BOT_GID))
 chown -R "$HOST_BOT_UID:$HOST_BOT_GID" "$HOST_BASE"
@@ -54,7 +54,6 @@ lxc config device add "$PARAM_TENANT"-bot botlogs disk source="$HOST_LOGS" path=
 
 lxc exec "$PARAM_TENANT"-bot -- bash -c '
 mkdir -p /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
-chown -R bot:bot /opt/gbo
 
 sudo apt update
 sudo apt install -y curl gnupg ca-certificates git
@@ -73,6 +72,11 @@ cd botserver
 npm install
 npx puppeteer browsers install chrome
 ./node_modules/.bin/tsc
+cd packages/default.gbui
+npm install
+npm run build
+
+chown -R gbuser:gbuser /opt/gbo
 
 # Create systemd service
 sudo tee /etc/systemd/system/bot.service > /dev/null <<EOF
@@ -81,8 +85,8 @@ Description=Bot Server
 After=network.target
 
 [Service]
-User=bot
-Group=bot
+User=gbuser
+Group=gbuser
 Environment="DISPLAY=:99"
 ExecStartPre=/bin/bash -c "/usr/bin/Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &"
 WorkingDirectory=/opt/gbo/data/botserver
