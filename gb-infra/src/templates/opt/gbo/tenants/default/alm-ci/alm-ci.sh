@@ -41,7 +41,52 @@ set -e
 useradd --system --no-create-home --shell /bin/false gbuser
 
 # Update and install dependencies
-apt-get update && apt-get install -y wget || { echo 'Package installation failed'; exit 1; }
+apt-get update && apt-get install -y wget git || { echo 'Package installation failed'; exit 1; }
+
+sudo apt update
+sudo apt install -y curl gnupg ca-certificates git
+apt-get update && apt-get install -y \
+build-essential cmake git pkg-config libjpeg-dev libtiff-dev \
+libpng-dev libavcodec-dev libavformat-dev libswscale-dev \
+libv4l-dev libatlas-base-dev gfortran python3-dev cpulimit \
+expect libxtst-dev libpng-dev
+
+sudo apt-get install -y libcairo2-dev libpango1.0-dev libgif-dev librsvg2-dev
+sudo apt install xvfb -y
+
+sudo apt install -y \
+  libnss3 \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libcups2 \
+  libdrm2 \
+  libxkbcommon0 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxfixes3 \
+  libxrandr2 \
+  libgbm1 \
+  libasound2 \
+  libpangocairo-1.0-0
+
+export OPENCV4NODEJS_DISABLE_AUTOBUILD=1
+export OPENCV_LIB_DIR=/usr/lib/x86_64-linux-gnu
+
+# Install Node.js 22.x
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+sudo apt install -y nodejs
+
+sudo apt install -y curl gnupg ca-certificates git
+
+# Install Node.js 22.x
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+sudo apt install -y nodejs
+
+# Install Xvfb and other dependencies
+sudo apt install -y xvfb libgbm-dev
+
+
+
 
 # Create directories
 mkdir -p \"$BIN_PATH\" /opt/gbo/data /opt/gbo/conf /opt/gbo/logs || { echo 'Directory creation failed'; exit 1; }
@@ -75,6 +120,16 @@ sudo chown -R "$HOST_EMAIL_UID:$HOST_EMAIL_GID" "$HOST_BASE"
 lxc config device add "$CONTAINER_NAME" almdata disk source="$HOST_DATA" path=/opt/gbo/data || exit 1
 lxc config device add "$CONTAINER_NAME" almconf disk source="$HOST_CONF" path=/opt/gbo/conf || exit 1
 lxc config device add "$CONTAINER_NAME" almlogs disk source="$HOST_LOGS" path=/opt/gbo/logs || exit 1
+
+LXC_BOT="/opt/gbo/tenants/$PARAM_TENANT/bot/data"
+LXC_PROXY="/opt/gbo/tenants/$PARAM_TENANT/proxy/data/websites"
+#LXC_GB6="/opt/gbo/tenants/$PARAM_TENANT/gb6/bin"
+
+lxc config device add "$CONTAINER_NAME" almbot disk source="$LXC_BOT" path=/opt/gbo/bin/bot 
+lxc config device add "$CONTAINER_NAME" almproxy disk source="$LXC_PROXY" path=/opt/gbo/bin/proxy 
+#lxc config device add "$CONTAINER_NAME" almgb6 disk source="$LXC_GB6" path=/opt/gbo/bin/gb6 || exit 1
+
+
 
 lxc exec "$CONTAINER_NAME" -- bash -c "
 # Create systemd service
