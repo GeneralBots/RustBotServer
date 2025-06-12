@@ -1,21 +1,8 @@
-#!/bin/bash
+    #!/bin/bash
 
 # Fixed container name
-CONTAINER_NAME="table-editor"
+CONTAINER_NAME="$PARAM_TENANT-table-editor"
 
-
-
-
-
-
-# Database configuration
-PARAM_TABLES_HOST = PARAM_TABLES_HOST="10.16.164.45"
-PARAM_TABLES_PORT = PARAM_TABLES_PORT=4444
-PARAM_TABLES_USER = PARAM_TABLES_USER="postgres"
-PARAM_TABLES_PASSWORD = PARAM_TABLES_PASSWORD="67a690df"
-
-
-# Port configuration
 TABLE_EDITOR_PORT="5757"
 
 # Paths
@@ -48,7 +35,7 @@ mkdir -p \"$BIN_PATH\" /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
 cd \"$BIN_PATH\"
 curl http://get.nocodb.com/linux-x64 -o nocodb -L
 chmod +x nocodb
-
+"
 
 # Set permissions
 TE_UID=$(lxc exec "$CONTAINER_NAME" -- id -u gbuser)
@@ -62,6 +49,9 @@ lxc config device add "$CONTAINER_NAME" tedata disk source="$HOST_DATA" path=/op
 lxc config device add "$CONTAINER_NAME" teconf disk source="$HOST_CONF" path=/opt/gbo/conf
 lxc config device add "$CONTAINER_NAME" telogs disk source="$HOST_LOGS" path=/opt/gbo/logs
 
+
+
+
 # Create systemd service
 lxc exec "$CONTAINER_NAME" -- bash -c "
 cat > /etc/systemd/system/table-editor.service <<EOF
@@ -74,9 +64,8 @@ Type=simple
 User=gbuser
 Group=gbuser
 WorkingDirectory=$BIN_PATH
-Environment=NC_PORT=${PARAM_TABLE_EDITOR_PORT}
-Environment=NC_DB=pg://${PARAM_TABLES_HOST}:${PARAM_TABLES_PORT}?u=${PARAM_TABLES_USER}&p=${PARAM_TABLES_PASSWORD}&d=${PARAM_TABLE_EDITOR_DATABASE}
-EnvironmentFile=/opt/gbo/conf/nocodb.env
+Environment=PORT=${PARAM_TABLE_EDITOR_PORT}
+Environment=DATABASE_URL=postgres://${PARAM_TABLES_USER}:${PARAM_TABLES_PASSWORD}@${PARAM_TABLES_HOST}:${PARAM_TABLES_PORT}/${PARAM_TABLE_EDITOR_DATABASE}
 ExecStart=$BIN_PATH/nocodb
 Restart=always
 StandardOutput=append:/opt/gbo/logs/out.log
@@ -90,6 +79,8 @@ systemctl daemon-reload
 systemctl enable table-editor
 systemctl start table-editor
 "
+
+
 
 # Expose the NocoDB port
 lxc config device add "$CONTAINER_NAME" http proxy listen=tcp:0.0.0.0:$TABLE_EDITOR_PORT connect=tcp:127.0.0.1:$TABLE_EDITOR_PORT
