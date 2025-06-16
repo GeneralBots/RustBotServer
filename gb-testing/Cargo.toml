@@ -71,3 +71,6 @@ rstest = { workspace = true }
 wiremock = "0.5"
 assert_cmd = "2.0"
 predicates = "3.0"
+
+
+jmap-client = "0.1"  # Check for the latest version on crates.io

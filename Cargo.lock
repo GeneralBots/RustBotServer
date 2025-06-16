@@ -268,6 +268,7 @@ dependencies = [
  "cfg-if",
  "getrandom 0.2.15",
  "once_cell",
+ "serde",
  "version_check",
  "zerocopy 0.7.35",
 ]
@@ -3112,6 +3113,7 @@ dependencies = [
  "gb-server",
  "goose",
  "hyper 1.6.0",
+ "jmap-client",
  "minio",
  "opentelemetry 0.20.0",
  "predicates",
@@ -4308,6 +4310,23 @@ name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
+
+[[package]]
+name = "jmap-client"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09d478b6514a12725ee2653689846b49c8dd18c215dcc5b84ea02ba9b079bc4f"
+dependencies = [
+ "ahash",
+ "async-stream",
+ "base64 0.13.1",
+ "chrono",
+ "futures-util",
+ "parking_lot 0.12.3",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "jobserver"

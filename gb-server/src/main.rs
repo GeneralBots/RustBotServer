@@ -1,6 +1,6 @@
-use log::{info, Level, LevelFilter, Metadata, Record};
-use std::io::Write;
-use tokio::io::{AsyncWriteExt};
+use log::{info, LevelFilter};
+
+
 use tokio::net::TcpStream;
 
 use actix_web::{middleware, web, App, HttpServer};
@@ -21,20 +21,20 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     // Configure the logger
-    log::set_logger(&VectorLogger { stream: TcpStream::connect("127.0.0.1:9000").await? })
-        .map_err(|_| "Couldn't set logger")?;
-    log::set_max_level(LevelFilter::Info);
+    // log::set_logger(&VectorLogger { stream: TcpStream::connect("127.0.0.1:9000").await? })
+    //     .map_err(|_| "Couldn't set logger")?;
+    // log::set_max_level(LevelFilter::Info);
 
     // Get the Vector agent's address and port
     let vector_host = "127.0.0.1";
     let vector_port = 9000;
 
-    // Start a Vector logger
-    let mut vector_logger = VectorLogger::new(vector_host, vector_port).await?;
+    // // Start a Vector logger
+    // let mut vector_logger = VectorLogger::new(vector_host, vector_port).await?;
 
-    // Set the logger
-    log::set_logger(&vector_logger).map_err(|_| "Couldn't set logger")?;
-    log::set_max_level(LevelFilter::Info);
+    // // Set the logger
+    // log::set_logger(&vector_logger).map_err(|_| "Couldn't set logger")?;
+    // log::set_max_level(LevelFilter::Info);
 
     // Log some messages
     info!("Hello from Rust!");
