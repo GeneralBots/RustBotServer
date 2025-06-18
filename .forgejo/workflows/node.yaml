@@ -26,7 +26,7 @@ jobs:
 
     - name: Deploy binary
       run: |
-        sudo cp ./target/release/gbserver /opt/gbo/bin/bot
-        sudo chmod +x /opt/gbo/bin/bot/gbserver
+        sudo cp ./target/release/gbserver /opt/gbo/bin/system
+        sudo chmod +x /opt/gbo/bin/system/gbserver
         
         sudo systemctl restart gbserver

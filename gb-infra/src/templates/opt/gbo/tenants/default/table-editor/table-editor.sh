@@ -6,7 +6,7 @@ CONTAINER_NAME="$PARAM_TENANT-table-editor"
 TABLE_EDITOR_PORT="5757"
 
 # Paths
-HOST_BASE="/opt/gbo/tenants/table-editor"
+HOST_BASE="/opt/gbo/tenants/$PARAM_TENANT/table-editor"
 HOST_DATA="$HOST_BASE/data"
 HOST_CONF="$HOST_BASE/conf"
 HOST_LOGS="$HOST_BASE/logs"

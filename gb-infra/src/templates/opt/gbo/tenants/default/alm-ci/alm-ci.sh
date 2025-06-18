@@ -123,11 +123,11 @@ lxc config device add "$CONTAINER_NAME" almlogs disk source="$HOST_LOGS" path=/o
 
 LXC_BOT="/opt/gbo/tenants/$PARAM_TENANT/bot/data"
 LXC_PROXY="/opt/gbo/tenants/$PARAM_TENANT/proxy/data/websites"
-#LXC_GB6="/opt/gbo/tenants/$PARAM_TENANT/gb6/bin"
+LXC_GB6="/opt/gbo/tenants/$PARAM_TENANT/system/bin"
 
-lxc config device add "$CONTAINER_NAME" almbot disk source="$LXC_BOT" path=/opt/gbo/bin/bot 
+lxc config device add "$CONTAINER_NAME" almbot disk source="$LXC_BOT" path=/opt/gbo/bin/bot
 lxc config device add "$CONTAINER_NAME" almproxy disk source="$LXC_PROXY" path=/opt/gbo/bin/proxy 
-#lxc config device add "$CONTAINER_NAME" almgb6 disk source="$LXC_GB6" path=/opt/gbo/bin/gb6 || exit 1
+lxc config device add "$CONTAINER_NAME" almsystem disk source="$LXC_GB6" path=/opt/gbo/bin/system || exit 1
 
 
 
