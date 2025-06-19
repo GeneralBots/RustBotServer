@@ -17,7 +17,9 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Run build
-      run: cargo build --workspace --release --locked
+      run: |
+        export PATH=\"\$HOME/.cargo/bin:\$PATH\"
+        cargo build --workspace --release --locked
 
     - name: Deploy binary
       run: |
