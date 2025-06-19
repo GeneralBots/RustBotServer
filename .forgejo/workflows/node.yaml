@@ -18,7 +18,7 @@ jobs:
 
     - name: Run build
       run: |
-        export PATH=\"\$HOME/.cargo/bin:\$PATH\"
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH  # Forgejo uses same syntax as GitHub Actions
         cargo build --workspace --release --locked
 
     - name: Deploy binary
