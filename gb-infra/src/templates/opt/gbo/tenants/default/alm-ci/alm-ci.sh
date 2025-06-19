@@ -20,7 +20,7 @@ mkdir -p "$HOST_DATA" "$HOST_CONF" "$HOST_LOGS" || exit 1
 chmod -R 750 "$HOST_BASE" || exit 1
 
 # Launch container
-if ! lxc launch "$CONTAINER_IMAGE" "$CONTAINER_NAME"; then
+if ! lxc launch "$CONTAINER_IMAGE" "$CONTAINER_NAME" -c security.privileged=true; then
     echo "Failed to launch container"
     exit 1
 fi
@@ -38,7 +38,7 @@ done
 lxc exec "$CONTAINER_NAME" -- bash -c "
 set -e
 
-useradd --system --no-create-home --shell /bin/false gbuser
+useradd --system --no-create-home --shell /bin/false $CONTAINER_NAME
 
 # Update and install dependencies
 apt-get update && apt-get install -y wget git || { echo 'Package installation failed'; exit 1; }
@@ -72,21 +72,28 @@ sudo apt install -y \
 export OPENCV4NODEJS_DISABLE_AUTOBUILD=1
 export OPENCV_LIB_DIR=/usr/lib/x86_64-linux-gnu
 
-# Install Node.js 22.x
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
-sudo apt install -y nodejs
-
 sudo apt install -y curl gnupg ca-certificates git
+sudo apt-get install -y \
+    apt-transport-https \
+    software-properties-common \
+    gnupg \
+    wget \
+    unzip \
+    tar 
+
 
 # Install Node.js 22.x
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
 sudo apt install -y nodejs
+
+# Install rust 1.85
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.85.1 -y
+source ~/.cargo/env
+rustc --version
+
 
 # Install Xvfb and other dependencies
 sudo apt install -y xvfb libgbm-dev
-
-
-
 
 # Create directories
 mkdir -p \"$BIN_PATH\" /opt/gbo/data /opt/gbo/conf /opt/gbo/logs || { echo 'Directory creation failed'; exit 1; }
@@ -104,13 +111,14 @@ cd \"$BIN_PATH\"
     --token \"$PARAM_ALM_CI_TOKEN\" \\
     --labels \"$ALM_CI_LABELS\" || { echo 'Runner registration failed'; exit 1; }
 
-chown -R gbuser:gbuser /opt/gbo/data /opt/gbo/conf /opt/gbo/logs /opt/gbo/bin
+chown -R $CONTAINER_NAME:$CONTAINER_NAME /opt/gbo/bin /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
+
 "
 
 # Set permissions
 echo "[CONTAINER] Setting permissions..."
-EMAIL_UID=$(lxc exec "$PARAM_TENANT"-alm-ci -- id -u gbuser)
-EMAIL_GID=$(lxc exec "$PARAM_TENANT"-alm-ci -- id -g gbuser)
+EMAIL_UID=$(lxc exec "$PARAM_TENANT"-alm-ci -- id -u $CONTAINER_NAME)
+EMAIL_GID=$(lxc exec "$PARAM_TENANT"-alm-ci -- id -g $CONTAINER_NAME)
 HOST_EMAIL_UID=$((100000 + EMAIL_UID))
 HOST_EMAIL_GID=$((100000 + EMAIL_GID))
 sudo chown -R "$HOST_EMAIL_UID:$HOST_EMAIL_GID" "$HOST_BASE"
@@ -120,15 +128,6 @@ sudo chown -R "$HOST_EMAIL_UID:$HOST_EMAIL_GID" "$HOST_BASE"
 lxc config device add "$CONTAINER_NAME" almdata disk source="$HOST_DATA" path=/opt/gbo/data || exit 1
 lxc config device add "$CONTAINER_NAME" almconf disk source="$HOST_CONF" path=/opt/gbo/conf || exit 1
 lxc config device add "$CONTAINER_NAME" almlogs disk source="$HOST_LOGS" path=/opt/gbo/logs || exit 1
-
-LXC_BOT="/opt/gbo/tenants/$PARAM_TENANT/bot/data"
-LXC_PROXY="/opt/gbo/tenants/$PARAM_TENANT/proxy/data/websites"
-LXC_GB6="/opt/gbo/tenants/$PARAM_TENANT/system/bin"
-
-lxc config device add "$CONTAINER_NAME" almbot disk source="$LXC_BOT" path=/opt/gbo/bin/bot
-lxc config device add "$CONTAINER_NAME" almproxy disk source="$LXC_PROXY" path=/opt/gbo/bin/proxy 
-lxc config device add "$CONTAINER_NAME" almsystem disk source="$LXC_GB6" path=/opt/gbo/bin/system || exit 1
-
 
 
 lxc exec "$CONTAINER_NAME" -- bash -c "
@@ -140,11 +139,12 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
-Group=root
-WorkingDirectory=$BIN_PATH
+User=$CONTAINER_NAME
+Group=$CONTAINER_NAME
 ExecStart=$BIN_PATH/forgejo-runner daemon
 Restart=always
+StandardOutput=append:/opt/gbo/logs/output.log
+StandardError=append:/opt/gbo/logs/error.log
 
 [Install]
 WantedBy=multi-user.target
@@ -155,3 +155,12 @@ systemctl daemon-reload || { echo 'daemon-reload failed'; exit 1; }
 systemctl enable alm-ci || { echo 'enable service failed'; exit 1; }
 systemctl start alm-ci || { echo 'start service failed'; exit 1; }
 "
+
+
+LXC_BOT="/opt/gbo/tenants/$PARAM_TENANT/bot/data"
+LXC_PROXY="/opt/gbo/tenants/$PARAM_TENANT/proxy/data/websites"
+LXC_SYSTEM="/opt/gbo/tenants/$PARAM_TENANT/system/bin"
+
+lxc config device add "$CONTAINER_NAME" almbot disk source="$LXC_BOT" path=/opt/gbo/bin/bot
+lxc config device add "$CONTAINER_NAME" almproxy disk source="$LXC_PROXY" path=/opt/gbo/bin/proxy 
+lxc config device add "$CONTAINER_NAME" almsystem disk source="$LXC_SYSTEM" path=/opt/gbo/bin/syst  em || exit 1
