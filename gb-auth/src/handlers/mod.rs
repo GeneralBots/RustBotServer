@@ -1,2 +1,0 @@
-mod auth_handler;
-

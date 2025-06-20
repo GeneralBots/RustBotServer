@@ -1,1 +1,0 @@
-cargo test --package gb-testing --test integration_email_list -- test_successful_email_lilst --exact --show-output 

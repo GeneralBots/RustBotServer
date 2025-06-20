@@ -1,9 +1,0 @@
-[package]
-name = "gb-calendar"
-version = { workspace = true }
-edition = { workspace = true }
-authors = { workspace = true }
-license = { workspace = true }
-
-[dependencies]
-gb-core = { path = "../gb-core" }
