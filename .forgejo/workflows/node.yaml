@@ -25,9 +25,9 @@ jobs:
     - name: Run build
       run: cargo build --locked
 
-    - name: Deploy binary
+    - name: Deploy binary and restart
       run: |
-        sudo cp ./target/release/gbserver /opt/gbo/bin/system
+        sudo cp ./target/debug/gbserver /opt/gbo/bin/system
         sudo chmod +x /opt/gbo/bin/system/gbserver
                 
         lxc exec bot:pragmatismo-system -- systemctl restart system
