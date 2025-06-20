@@ -98,7 +98,7 @@ rustc --version
 
 
 # Install Xvfb and other dependencies
-sudo apt install -y xvfb libgbm-dev
+sudo apt install -y xvfb libgbm-dev lxd-client
 
 # Create directories
 mkdir -p \"$BIN_PATH\" /opt/gbo/data /opt/gbo/conf /opt/gbo/logs || { echo 'Directory creation failed'; exit 1; }

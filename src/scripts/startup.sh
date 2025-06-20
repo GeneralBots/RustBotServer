@@ -8,4 +8,3 @@ chmod +x /etc/profile.d/notimeout.sh
 sed -i '/pam_exec.so/s/quiet/quiet set_timeout=0/' /etc/pam.d/sshd 2>/dev/null
 source /etc/profile
 
-    

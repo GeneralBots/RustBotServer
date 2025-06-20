@@ -1,57 +1,57 @@
 #!/bin/bash
-STORAGE_PATH="/opt/gbo/tenants/$PARAM_TENANT/system/data"
-LOGS_PATH="/opt/gbo/tenants/$PARAM_TENANT/system/logs"
+HOST_BASE="/opt/gbo/tenants/$PARAM_TENANT/system"
+HOST_DATA="$HOST_BASE/data"
+HOST_CONF="$HOST_BASE/conf"
+HOST_LOGS="$HOST_BASE/logs"
+HOST_BIN="$HOST_BASE/bin"
+BIN_PATH="/opt/gbo/bin"
+CONTAINER_NAME="${PARAM_TENANT}-system"
 
-mkdir -p "${STORAGE_PATH}" "${LOGS_PATH}"
-chmod -R 770 "${STORAGE_PATH}" "${LOGS_PATH}"
-chown -R 100999:100999 "${STORAGE_PATH}" "${LOGS_PATH}"
+# Create host directories
+mkdir -p "$HOST_DATA" "$HOST_CONF" "$HOST_LOGS" || exit 1
+chmod -R 750 "$HOST_BASE" || exit 1
 
-lxc launch images:debian/12 "${PARAM_TENANT}-system" -c security.privileged=true
+
+lxc launch images:debian/12 $CONTAINER_NAME -c security.privileged=true
 sleep 15
 
-lxc config device add "${PARAM_TENANT}-system" storage disk source="${STORAGE_PATH}" path=/data
-lxc config device add "${PARAM_TENANT}-system" logs disk source="${LOGS_PATH}" path=/var/log/minio
-
-lxc exec "${PARAM_TENANT}-system" -- bash -c '
+lxc exec $CONTAINER_NAME -- bash -c '
 
 apt-get update && apt-get install -y wget
-wget https://dl.min.io/server/minio/release/linux-amd64/minio -O /usr/local/bin/minio
-chmod +x /usr/local/bin/minio
 
-useradd -r -s /bin/false minio-user || true
-mkdir -p /var/log/minio /data
-chown -R minio-user:minio-user /var/log/minio /data
+useradd -r -s /bin/false gbuser || true
+mkdir -p /opt/gbo/logs /opt/gbo/bin /opt/gbo/data /opt/gbo/conf
+chown -R gbuser:gbuser /opt/gbo/
 
-cat > /etc/systemd/system/minio.service <<EOF
+cat > /etc/systemd/system/system.service <<EOF
 [Unit]
-Description=MinIO
+Description=General Bots System Service
 After=network.target
 
 [Service]
 Type=simple
-User=minio-user
-Group=minio-user
-Environment="MINIO_ROOT_USER='"${PARAM_system_USER}"'"
-Environment="MINIO_ROOT_PASSWORD='"${PARAM_system_PASSWORD}"'"
-ExecStart=/usr/local/bin/minio server --console-address ":'"${PARAM_system_PORT}"'" /data
-StandardOutput=append:/var/log/minio/output.log
-StandardError=append:/var/log/minio/error.log
+User=gbuser
+Group=gbuser
+ExecStart=/opt/gbo/bin/gbserver
+StandardOutput=append:/opt/gbo/logs/output.log
+StandardError=append:/opt/gbo/logs/error.log
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable minio
-systemctl start minio
+systemctl enable system
+systemctl start system
 '
 
-lxc config device remove "${PARAM_TENANT}-system" minio-proxy 2>/dev/null || true
-lxc config device add "${PARAM_TENANT}-system" minio-proxy proxy \
-    listen=tcp:0.0.0.0:"${PARAM_system_API_PORT}" \
-    connect=tcp:127.0.0.1:"${PARAM_system_API_PORT}"
+lxc config device add $CONTAINER_NAME bin disk source="${HOST_BIN}" path=/opt/gbo/bin
+lxc config device add $CONTAINER_NAME data disk source="${HOST_DATA}" path=/opt/gbo/data
+lxc config device add $CONTAINER_NAME conf disk source="${HOST_CONF}" path=/opt/gbo/conf
+lxc config device add $CONTAINER_NAME logs disk source="${HOST_LOGS}" path=/opt/gbo/logs
 
-lxc config device remove "${PARAM_TENANT}-system" console-proxy 2>/dev/null || true
-lxc config device add "${PARAM_TENANT}-system" console-proxy proxy \
-    listen=tcp:0.0.0.0:"${PARAM_system_PORT}" \
-    connect=tcp:127.0.0.1:"${PARAM_system_PORT}"
+
+lxc config device remove $CONTAINER_NAME proxy 2>/dev/null || true
+lxc config device add $CONTAINER_NAME proxy proxy \
+    listen=tcp:0.0.0.0:"${PARAM_SYSTEM_PORT}" \
+    connect=tcp:127.0.0.1:"${PARAM_SYSTEM_PORT}"

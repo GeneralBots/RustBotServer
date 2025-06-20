@@ -23,12 +23,12 @@ jobs:
         
         
     - name: Run build
-      run: cargo build --workspace --release --locked
+      run: cargo build --locked
 
     - name: Deploy binary
       run: |
         sudo cp ./target/release/gbserver /opt/gbo/bin/system
         sudo chmod +x /opt/gbo/bin/system/gbserver
-        
-        sudo systemctl restart gbserver
+                
+        lxc exec bot:pragmatismo-system -- systemctl restart system
         
