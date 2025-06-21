@@ -20,3 +20,4 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 minio = { git = "https://github.com/minio/minio-rs", branch = "master" }
 tokio-stream = "0.1.17"
+jmap-client = "0.3.2"
