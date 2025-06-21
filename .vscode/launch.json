@@ -4,47 +4,19 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug GB API Server",
+            "name": "Debug GB Server",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=gb-server"
+                    "--bin=gbserver"
                 ],
                 "filter": {
-                    "name": "gb-server",
+                    "name": "gbserver",
                     "kind": "bin"
                 }
             },
             "args": [],
             "cwd": "${workspaceFolder}",
-            "env": {
-                "RUST_LOG": "info",
-                "DATABASE_URL": "postgres://gbuser:gbpassword@localhost:5432/generalbots",
-                "REDIS_URL": "redis://localhost:6379"
-            }
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'gb-server'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=gb-server"
-                ],
-                "filter": {
-                    "name": "gb-server",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "--test-threads=1"
-            ],
-            "cwd": "${workspaceFolder}",  "env": {
-                "RUST_LOG": "info"
-              }
         },
         {
             "type": "lldb",
@@ -55,7 +27,7 @@
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=gb-server"
+                    "--package=gbserver"
                 ],
                 "filter": {
                     "name": "integration",
@@ -63,17 +35,10 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}",   "env": {
+            "cwd": "${workspaceFolder}",
+            "env": {
                 "RUST_LOG": "info"
-              }
+            }
         },
     ],
-    "compounds": [
-        {
-            "name": "API Server + Debug",
-            "configurations": [
-                "Debug GB API Server"
-            ]
-        }
-    ]
 }
