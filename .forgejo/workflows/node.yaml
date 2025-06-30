@@ -21,14 +21,15 @@ jobs:
       with:
         toolchain: stable
         
-        
     - name: Run build
       run: cargo build --locked
 
     - name: Deploy binary and restart
       run: |
+        lxc exec bot:pragmatismo-system -- systemctl stop system
+        
         sudo cp ./target/debug/gbserver /opt/gbo/bin/system
         sudo chmod +x /opt/gbo/bin/system/gbserver
                 
-        lxc exec bot:pragmatismo-system -- systemctl restart system
+        lxc exec bot:pragmatismo-system -- systemctl start system
         
