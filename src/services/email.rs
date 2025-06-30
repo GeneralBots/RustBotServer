@@ -1,3 +1,4 @@
+use actix_web::{HttpResponse, http::header::ContentType};
 use actix_web::web;
 use jmap_client::{
     client::Client,
@@ -57,18 +58,31 @@ pub async fn list_emails() -> Result<web::Json<Vec<email::Email>>, actix_web::Er
 }
 
 
-#[actix_web::get("/campaigns/{campaign_id}/click/{email}")]
+
 pub async fn save_click(
     path: web::Path<(String, String)>,
     state: web::Data<AppState>,
-) -> String {
+) -> HttpResponse {
     let (campaign_id, email) = path.into_inner();
     let _ = sqlx::query("INSERT INTO clicks (campaign_id, email, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (campaign_id, email) DO UPDATE SET updated_at = NOW()")
         .bind(campaign_id)
         .bind(email)
         .execute(state.db.as_ref().unwrap())
         .await;
-    "OK".to_string()
+
+    let pixel = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,      // PNG header
+                 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,      // IHDR chunk
+                 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,      // 1x1 dimension
+                 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, // RGBA
+                 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54,      // IDAT chunk
+                 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05,      // data
+                 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4,                  // CRC
+                 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,      // IEND chunk
+                 0xAE, 0x42, 0x60, 0x82];                              // EOF
+
+    HttpResponse::Ok()
+        .content_type(ContentType::png())
+        .body(pixel)
 }
 
 #[actix_web::get("/campaigns/{campaign_id}/emails")]
