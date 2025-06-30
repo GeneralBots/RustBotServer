@@ -1,28 +1,21 @@
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use sqlx::PgPool;
-use tracing_subscriber::fmt::format::FmtSpan;
 
 use services::config::*;
+use services::email::*;
 use services::file::*;
 use services::state::*;
-use services::email::*;
-
 
 mod services;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    
     dotenv().ok();
     let config = AppConfig::from_env();
-    let db = PgPool::connect(&std::env::var("DATABASE_URL").unwrap())
-        .await
-        .unwrap();
 
-    tracing_subscriber::fmt()
-        .with_span_events(FmtSpan::CLOSE)
-        .init();
+    let db_url = config.database_url(); 
+    let db = PgPool::connect(&db_url).await.unwrap();
 
     let minio_client = init_minio(&config)
         .await
@@ -37,8 +30,6 @@ async fn main() -> std::io::Result<()> {
     // Start HTTP server
     HttpServer::new(move || {
         App::new()
-            .wrap(middleware::Logger::default())
-            .wrap(middleware::Compress::default())
             .app_data(app_state.clone())
             .service(upload_file)
             .service(list_file)

@@ -19,7 +19,7 @@ use crate::services::state::AppState;
 
 pub async fn init_minio(config: &AppConfig) -> Result<MinioClient, minio::s3::error::Error> {
     let scheme = if config.minio.use_ssl { "https" } else { "http" };
-    let base_url = format!("{}://{}", scheme, config.minio.endpoint);
+    let base_url = format!("{}://{}", scheme, config.minio.server);
     let base_url = BaseUrl::from_str(&base_url)?;
     let credentials = StaticProvider::new(
         &config.minio.access_key,
