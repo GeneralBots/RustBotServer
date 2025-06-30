@@ -56,7 +56,7 @@ pub async fn list_emails() -> Result<web::Json<Vec<email::Email>>, actix_web::Er
     Ok(web::Json(email_list))
 }
 
-#[actix_web::post("/campaigns/{campaign_id}/click/{email}")]
+#[actix_web::get("/campaigns/{campaign_id}/click/{email}")]
 pub async fn save_click(
     path: web::Path<(String, String)>,
     state: web::Data<AppState>,
