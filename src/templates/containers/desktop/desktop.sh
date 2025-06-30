@@ -36,12 +36,13 @@ curl -s https://brave-browser-apt-release.s3.brave.com/brave-core.asc | gpg --de
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" > /etc/apt/sources.list.d/brave-browser-release.list
 apt update && apt install -y brave-browser
 
-
-
-
+sudo apt install gnome-tweaks
+/etc/environment
+    GTK_IM_MODULE=cedilla
+    QT_IM_MODULE=cedilla
 
 "
 
 
-sudo iptables -t nat -A PREROUTING -p tcp --dport 3389 -j DNAT --to-destination CONTAINER_IP:3389
-sudo iptables -A FORWARD -p tcp -d CONTAINER_IP --dport 3389 -j ACCEPT
+sudo iptables -t nat -A PREROUTING -p tcp --dport 3389 -j DNAT --to-destination $CONTAINER_IP:3389
+sudo iptables -A FORWARD -p tcp -d $CONTAINER_IP --dport 3389 -j ACCEPT

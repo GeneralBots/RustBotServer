@@ -7,6 +7,7 @@ use crate::services::config::AppConfig;
 pub struct AppState {
     pub minio_client: Option<Client>,
     pub config: Option<AppConfig>,
+    pub db:  Option<sqlx::PgPool>,
 
 }
 

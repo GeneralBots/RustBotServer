@@ -77,6 +77,7 @@ sudo apt install -y curl gnupg ca-certificates git
 # Install Node.js 22.x
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
 sudo apt install -y nodejs
+npm  install -g pnpm@latest
 
 # Install rust 1.85
 apt-get install -y libssl-dev pkg-config

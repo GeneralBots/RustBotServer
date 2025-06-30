@@ -58,19 +58,19 @@ mkdir -p /opt/gbo/data /opt/gbo/conf /opt/gbo/logs
 sudo apt update
 sudo apt install -y curl gnupg ca-certificates git
 
-# Install Node.js 22.x
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
 sudo apt install -y nodejs
 
-# Install Xvfb and other dependencies
 sudo apt install -y xvfb libgbm-dev
 
-# Clone and setup bot server
+wget https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_128.0.6613.119-1_amd64.deb
+sudo apt install ./google-chrome-stable_128.0.6613.119-1_amd64.deb
+
 cd /opt/gbo/data
 git clone https://alm.pragmatismo.com.br/generalbots/botserver.git
 cd botserver
 npm install
-npx puppeteer browsers install chrome
+
 ./node_modules/.bin/tsc
 cd packages/default.gbui
 npm install

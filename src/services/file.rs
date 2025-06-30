@@ -77,7 +77,7 @@ pub async fn upload_file(
 
     // Upload the file to the MinIO bucket
     let client: Client = state.minio_client.clone().unwrap();
-    let bucket_name = "file-upload-rust-bucket";
+    let bucket_name = state.config.as_ref().unwrap().minio.bucket.clone();
 
     let content = ObjectContent::from(temp_file.path());
     client
