@@ -1,5 +1,5 @@
-use actix_web::{HttpResponse, http::header::ContentType};
 use actix_web::web;
+use actix_web::{http::header::ContentType, HttpResponse};
 use jmap_client::{
     client::Client,
     core::query::Filter,
@@ -31,8 +31,7 @@ pub async fn list_emails() -> Result<web::Json<Vec<email::Email>>, actix_web::Er
 
     let mut emails = client
         .email_query(
-            Filter::and([email::query::Filter::in_mailbox(inbox_id)])
-                .into(),
+            Filter::and([email::query::Filter::in_mailbox(inbox_id)]).into(),
             [email::query::Comparator::from()].into(),
         )
         .await
@@ -57,8 +56,7 @@ pub async fn list_emails() -> Result<web::Json<Vec<email::Email>>, actix_web::Er
     Ok(web::Json(email_list))
 }
 
-
-
+#[actix_web::post("/campaigns/{campaign_id}/click/{email}")]
 pub async fn save_click(
     path: web::Path<(String, String)>,
     state: web::Data<AppState>,
@@ -70,26 +68,26 @@ pub async fn save_click(
         .execute(state.db.as_ref().unwrap())
         .await;
 
-    let pixel = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,      // PNG header
-                 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,      // IHDR chunk
-                 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,      // 1x1 dimension
-                 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, // RGBA
-                 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54,      // IDAT chunk
-                 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05,      // data
-                 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4,                  // CRC
-                 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,      // IEND chunk
-                 0xAE, 0x42, 0x60, 0x82];                              // EOF
+    let pixel = [
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG header
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1 dimension
+        0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, // RGBA
+        0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, // IDAT chunk
+        0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, // data
+        0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, // CRC
+        0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, // IEND chunk
+        0xAE, 0x42, 0x60, 0x82,
+    ]; // EOF
 
+    // At the end of your save_click function:
     HttpResponse::Ok()
         .content_type(ContentType::png())
-        .body(pixel)
+        .body(pixel.to_vec()) // Using slicing to pass a reference
 }
 
 #[actix_web::get("/campaigns/{campaign_id}/emails")]
-pub async fn get_emails(
-    path: web::Path<String>,
-    state: web::Data<AppState>,
-) -> String {
+pub async fn get_emails(path: web::Path<String>, state: web::Data<AppState>) -> String {
     let campaign_id = path.into_inner();
     let rows = sqlx::query_scalar::<_, String>("SELECT email FROM clicks WHERE campaign_id = $1")
         .bind(campaign_id)
