@@ -55,6 +55,7 @@ if command -v lxc >/dev/null 2>&1; then
             rm -rf /tmp/* /var/tmp/*
             
             echo 'Cleaning logs...'
+            rm -rf /opt/gbo/logs/*
             journalctl --vacuum-time=1d 2>/dev/null || true
             
             echo 'Cleaning thumbnail cache...'
