@@ -8,13 +8,17 @@ license = "AGPL"
 repository = "https://alm.pragmatismo.com.br/generalbots/gbserver"
 
 [dependencies]
+actix-cors = "0.6"
 actix-multipart = "0.6"
 actix-web = "4"
 chrono = { version = "0.4", features = ["serde"] }
 dotenv = "0.15"
-jmap-client = "0.3.2"
+imap = "2.0"
+lettre = { version = "0.10", features = ["smtp-transport", "builder", "tokio1", "tokio1-native-tls"] }
 log = "0.4"
+mailparse = "0.13"
 minio = { git = "https://github.com/minio/minio-rs", branch = "master" }
+native-tls = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres"] }
@@ -23,6 +27,3 @@ tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1.17"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
-imap = "2"
-native-tls = "0.2"
-mailparse = "0.13"

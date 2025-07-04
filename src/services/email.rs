@@ -1,12 +1,13 @@
-use std::str::FromStr;
+use crate::services::{config::EmailConfig, state::AppState};
+use actix_web::error::ErrorInternalServerError;
+use actix_web::http::header::ContentType;
+use actix_web::{web, HttpResponse, Result};
+use lettre::{transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
+use serde::{Deserialize, Serialize};
+use tokio_stream::StreamExt;
+use mailparse::{parse_mail, MailHeaderMap};  // Added MailHeaderMap import
+use imap::types::{Seq};
 
-use actix_web::{error::ErrorInternalServerError, http::header::ContentType, web, HttpResponse};
-use jmap_client::{
-    client::Client, core::query::Filter, email, 
-    identity::Property, mailbox::{self, Role},
-    email::Property as EmailProperty
-};
-use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct EmailResponse {
@@ -15,270 +16,260 @@ pub struct EmailResponse {
     pub email: String,
     pub subject: String,
     pub text: String,
+    date: String,
+    read: bool,
+    labels: Vec<String>,
 }
 
-use crate::services::state::AppState;
-
-async fn create_jmap_client(
-    state: &web::Data<AppState>,
-) -> Result<(Client, String, String, String), actix_web::Error> {
-    let config = state
-        .config
-        .as_ref()
-        .ok_or_else(|| actix_web::error::ErrorInternalServerError("Configuration not available"))?;
-
-    let client = Client::new()
-        .credentials((
-            config.email.username.as_ref(),
-            config.email.password.as_ref(),
-        ))
-        .connect(&config.email.server)
-        .await
-        .map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("JMAP connection error: {}", e))
-        })?;
-
-    // 2. Get account ID and email
-    let session = client.session();
-    let (account_id, email) = session
-        .accounts()
-        .find_map(|account_id| {
-            let account = session.account(account_id).unwrap();
-            Some((account_id.to_string(), account.name().to_string()))
-        })
+async fn internal_send_email(config: &EmailConfig, to: &str, subject: &str, body: &str) {
+    let email = Message::builder()
+        .from(config.from.parse().unwrap())
+        .to(to.parse().unwrap())
+        .subject(subject)
+        .body(body.to_string())
         .unwrap();
 
-    let identity = client
-        .identity_get("default", Some(vec![Property::Id, Property::Email]))
-        .await
-        .map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("JMAP connection error: {}", e))
-        })?.unwrap();
+    let creds = Credentials::new(config.username.clone(), config.password.clone());
 
-    let identity_id = identity.id().unwrap();
-
-    println!("Account ID: {}", account_id);
-    println!("Email address: {}", email);
-    println!("IdentityID: {}", identity_id);
-
-    Ok((client, account_id, email, String::from_str(identity_id)?))
+    SmtpTransport::relay(&config.server)
+        .unwrap()
+        .port(config.port)
+        .credentials(creds)
+        .build()
+        .send(&email)
+        .unwrap();
 }
 
-#[actix_web::post("/emails/list")]
+#[actix_web::get("/emails/list")]
 pub async fn list_emails(
     state: web::Data<AppState>,
 ) -> Result<web::Json<Vec<EmailResponse>>, actix_web::Error> {
-    let (client, account_id, email, identity_id) = create_jmap_client(&state).await?;
+    let _config = state
+        .config
+        .as_ref()
+        .ok_or_else(|| ErrorInternalServerError("Configuration not available"))?;
 
-    // Get inbox mailbox
-    let inbox_id = client
-        .mailbox_query(
-            mailbox::query::Filter::role(Role::Inbox).into(),
-            None::<Vec<_>>,
-        )
-        .await
-        .map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("Failed to query inbox: {}", e))
-        })?
-        .take_ids()
-        .first()
-        .ok_or_else(|| actix_web::error::ErrorInternalServerError("Inbox not found"))?
-        .clone();
+    // Establish connection
+    let tls = native_tls::TlsConnector::builder().build().map_err(|e| {
+        ErrorInternalServerError(format!("Failed to create TLS connector: {:?}", e))
+    })?;
 
-    // Query emails in inbox
-    let email_ids = client
-        .email_query(
-            Filter::and([email::query::Filter::in_mailbox(&inbox_id)]).into(),
-            None::<Vec<_>>,
-        )
-        .await
-        .map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("Failed to query emails: {}", e))
-        })?
-        .take_ids();
+    let client = imap::connect(
+        (_config.email.server.as_str(), 993),
+        _config.email.server.as_str(),
+        &tls,
+    )
+    .map_err(|e| ErrorInternalServerError(format!("Failed to connect to IMAP: {:?}", e)))?;
+
+    // Login
+    let mut session = client
+        .login(&_config.email.username, &_config.email.password)
+        .map_err(|e| ErrorInternalServerError(format!("Login failed: {:?}", e)))?;
+
+    // Select INBOX
+    session
+        .select("INBOX")
+        .map_err(|e| ErrorInternalServerError(format!("Failed to select INBOX: {:?}", e)))?;
+
+    // Search for all messages
+    let messages = session
+        .search("ALL")
+        .map_err(|e| ErrorInternalServerError(format!("Failed to search emails: {:?}", e)))?;
 
     let mut email_list = Vec::new();
-    for email_id in email_ids {
-        // Fetch email details
-        let email = client
-            .email_get(
-                &email_id,
-                [
-                    EmailProperty::Id,
-                    EmailProperty::Subject,
-                    EmailProperty::From,
-                    EmailProperty::TextBody,
-                    EmailProperty::Preview,
-                ]
-                .into(),
-            )
-            .await
-            .map_err(|e| {
-                actix_web::error::ErrorInternalServerError(format!("Failed to get emails: {}", e))
-            })?
-            .unwrap();
 
-        let from = email.from().unwrap().first();
-        let (name, email_addr) = if let Some(addr) = from {
-            (
-                addr.name().unwrap_or("Unknown").to_string(),
-                addr.email().to_string(),
-            )
-        } else {
-            ("Unknown".to_string(), "unknown@example.com".to_string())
-        };
+    // Get last 20 messages
+    let recent_messages: Vec<_> = messages.iter().cloned().collect();  // Collect items into a Vec
+    let recent_messages: Vec<Seq> = recent_messages.into_iter().rev().take(20).collect();  // Now you can reverse and take the last 20
+    for seq in recent_messages {
+        // Fetch the entire message (headers + body)
+        let fetch_result = session.fetch(seq.to_string(), "RFC822");
+        let messages = fetch_result
+            .map_err(|e| ErrorInternalServerError(format!("Failed to fetch email: {:?}", e)))?;
 
-        let text = email.preview().unwrap_or_default().to_string();
+        for msg in messages.iter() {
+            let body = msg
+                .body()
+                .ok_or_else(|| ErrorInternalServerError("No body found"))?;
 
-        email_list.push(EmailResponse {
-            id: email.id().unwrap().to_string(),
-            name,
-            email: email_addr,
-            subject: email.subject().unwrap_or_default().to_string(),
-            text,
-        });
+            // Parse the complete email message
+            let parsed = parse_mail(body)
+                .map_err(|e| ErrorInternalServerError(format!("Failed to parse email: {:?}", e)))?;
+
+            // Extract headers
+            let headers = parsed.get_headers();
+            let subject = headers.get_first_value("Subject").unwrap_or_default();
+            let from = headers.get_first_value("From").unwrap_or_default();
+            let date = headers.get_first_value("Date").unwrap_or_default();
+
+            // Extract body text (handles both simple and multipart emails)
+            let body_text = if let Some(body_part) = parsed.subparts.iter().find(|p| p.ctype.mimetype == "text/plain") {
+                body_part.get_body().unwrap_or_default()
+            } else {
+                parsed.get_body().unwrap_or_default()
+            };
+
+            // Create preview
+            let preview = body_text.lines().take(3).collect::<Vec<_>>().join(" ");
+            let preview_truncated = if preview.len() > 150 {
+                format!("{}...", &preview[..150])
+            } else {
+                preview
+            };
+
+            // Parse From field
+            let (from_name, from_email) = parse_from_field(&from);
+
+            email_list.push(EmailResponse {
+                id: seq.to_string(),
+                name: from_name,
+                email: from_email,
+                subject: if subject.is_empty() {
+                    "(No Subject)".to_string()
+                } else {
+                    subject
+                },
+                text: preview_truncated,
+                date: if date.is_empty() {
+                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+                } else {
+                    date
+                },
+                read: false,
+                labels: Vec::new(),
+            });
+        }
     }
+
+    session
+        .logout()
+        .map_err(|e| ErrorInternalServerError(format!("Failed to logout: {:?}", e)))?;
 
     Ok(web::Json(email_list))
 }
 
-#[actix_web::post("/emails/suggest-answer/{email_id}")]
-pub async fn suggest_answer(
-    path: web::Path<String>,
-    state: web::Data<AppState>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let email_id = path.into_inner();
-    let (client, account_id, email, identity_id) = create_jmap_client(&state).await?;
-
-    // Fetch the specific email
-    let email = client
-        .email_get(
-            &email_id,
-            [
-                EmailProperty::Id,
-                EmailProperty::Subject,
-                EmailProperty::From,
-                EmailProperty::TextBody,
-                EmailProperty::Preview,
-            ]
-            .into(),
-        )
-        .await
-        .map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("Failed to get email: {}", e))
-        })?
-        .into_iter()
-        .next()
-        .ok_or_else(|| actix_web::error::ErrorNotFound("Email not found"))?;
-
-    let from = email.from().unwrap().first();
-    let sender_info = if let Some(addr) = from {
-        format!("{} <{}>", addr.name().unwrap_or("Unknown"), addr.email())
-    } else {
-        "Unknown sender".to_string()
-    };
-
-    let subject = email.subject().unwrap_or_default();
-    let body_text = email.preview().unwrap_or_default();
-
-    let response = serde_json::json!({
-        "suggested_response": "Thank you for your email. I will review this and get back to you shortly.",
-        "prompt": format!(
-            "Email from: {}\nSubject: {}\n\nBody:\n{}\n\n---\n\nPlease draft a professional response to this email.",
-            sender_info, subject, body_text
-        )
-    });
-
-    Ok(HttpResponse::Ok().json(response))
+// Helper function to parse From field
+fn parse_from_field(from: &str) -> (String, String) {
+    if let Some(start) = from.find('<') {
+        if let Some(end) = from.find('>') {
+            let email = from[start+1..end].trim().to_string();
+            let name = from[..start].trim().trim_matches('"').to_string();
+            return (name, email);
+        }
+    }
+    ("Unknown".to_string(), from.to_string())
 }
 
-#[actix_web::post("/emails/archive/{email_id}")]
-pub async fn archive_email(
-    path: web::Path<String>,
-    state: web::Data<AppState>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let email_id = path.into_inner();
-    let (client, account_id, email, identity_id) = create_jmap_client(&state).await?;
+// #[actix_web::post("/emails/suggest-answer/{email_id}")]
+// pub async fn suggest_answer(
+//     path: web::Path<String>,
+//     state: web::Data<AppState>,
+// ) -> Result<HttpResponse, actix_web::Error> {
+//     let email_id = path.into_inner();
+//     let config = state
+//         .config
+//         .as_ref()
+//         .ok_or_else(|| ErrorInternalServerError("Configuration not available"))?;
 
-    // Get Archive mailbox (or create if it doesn't exist)
-    let archive_id = match client
-        .mailbox_query(
-            mailbox::query::Filter::name("Archive").into(),
-            None::<Vec<_>>,
-        )
-        .await
-    {
-        Ok(mut result) => {
-            let ids = result.take_ids();
-            if let Some(id) = ids.first() {
-                id.clone()
-            } else {
-                // Create Archive mailbox if it doesn't exist
-                client
-                    .mailbox_create("Archive", None::<String>, Role::Archive)
-                    .await
-                    .map_err(|e| {
-                        actix_web::error::ErrorInternalServerError(format!(
-                            "Failed to create archive mailbox: {}",
-                            e
-                        ))
-                    })?
-                    .take_id()
-            }
-        }
-        Err(e) => {
-            return Err(actix_web::error::ErrorInternalServerError(format!(
-                "Failed to query mailboxes: {}",
-                e
-            )));
-        }
-    };
+//     // let mut session = create_imap_session(&config.email).await?;
 
-    // Move email to Archive mailbox
-    client
-        .email_set_mailboxes(&email_id, [&archive_id])
-        .await
-        .map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("Failed to archive email: {}", e))
-        })?;
+//     // session
+//     //     .select("INBOX")
+//     //     .await
+//     //     .map_err(|e| ErrorInternalServerError(format!("Failed to select INBOX: {:?}", e)))?;
 
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "message": "Email archived successfully",
-        "email_id": email_id,
-        "archive_mailbox_id": archive_id
-    })))
-}
+//     // let messages = session
+//     //     .fetch(&email_id, "RFC822.HEADER BODY[TEXT]")
+//     //     .await
+//     //     .map_err(|e| ErrorInternalServerError(format!("Failed to fetch email: {:?}", e)))?;
+
+//     // let msg = messages
+//     //     .iter()
+//     //     .next()
+//     //     .ok_or_else(|| actix_web::error::ErrorNotFound("Email not found"))?;
+
+//     // let header = msg
+//     //     .header()
+//     //     .ok_or_else(|| ErrorInternalServerError("No header found"))?;
+
+//     // let body = msg
+//     //     .text()
+//     //     .ok_or_else(|| ErrorInternalServerError("No body found"))?;
+
+//     // let header_str = String::from_utf8_lossy(header);
+//     // let mut subject = String::new();
+//     // let mut from_info = String::new();
+
+//     // for line in header_str.lines() {
+//     //     if line.starts_with("Subject: ") {
+//     //         subject = line.strip_prefix("Subject: ").unwrap_or("").to_string();
+//     //     } else if line.starts_with("From: ") {
+//     //         from_info = line.strip_prefix("From: ").unwrap_or("").to_string();
+//     //     }
+//     // }
+
+//     // let body_text = String::from_utf8_lossy(body);
+
+//     // let response = serde_json::json!({
+//     //     "suggested_response": "Thank you for your email. I will review this and get back to you shortly.",
+//     //     "prompt": format!(
+//     //         "Email from: {}\nSubject: {}\n\nBody:\n{}\n\n---\n\nPlease draft a professional response to this email.",
+//     //         from_info, subject, body_text.lines().take(20).collect::<Vec<_>>().join("\n")
+//     //     )
+//     // });
+
+//     // session.logout().await.ok();
+//     //Ok(HttpResponse::Ok().json(response))
+// }
+
+// #[actix_web::post("/emails/archive/{email_id}")]
+// pub async fn archive_email(
+//     path: web::Path<String>,
+//     state: web::Data<AppState>,
+// ) -> Result<HttpResponse, actix_web::Error> {
+//     let email_id = path.into_inner();
+//     let config = state
+//         .config
+//         .as_ref()
+//         .ok_or_else(|| ErrorInternalServerError("Configuration not available"))?;
+
+//     let mut session = create_imap_session(&config.email).await?;
+
+//     session
+//         .select("INBOX")
+//         .await
+//         .map_err(|e| ErrorInternalServerError(format!("Failed to select INBOX: {:?}", e)))?;
+
+//     // Create Archive folder if it doesn't exist
+//     session.create("Archive").await.ok(); // Ignore error if folder exists
+
+//     // Move email to Archive folder
+//     session.mv(&email_id, "Archive").await.map_err(|e| {
+//         ErrorInternalServerError(format!("Failed to move email to archive: {:?}", e))
+//     })?;
+
+//     session.logout().await.ok();
+
+//     Ok(HttpResponse::Ok().json(serde_json::json!({
+//         "message": "Email archived successfully",
+//         "email_id": email_id,
+//         "archive_folder": "Archive"
+//     })))
+// }
 
 #[actix_web::post("/emails/send")]
 pub async fn send_email(
     payload: web::Json<(String, String, String)>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    // Destructure the tuple into individual components
     let (to, subject, body) = payload.into_inner();
 
     println!("To: {}", to);
     println!("Subject: {}", subject);
     println!("Body: {}", body);
 
-    let (client, account_id, email, identity_id) = create_jmap_client(&state).await?;
-
-    let email_submission = client
-        .email_submission_create("111", account_id)
-        .await
-        .map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("Failed to create email: {}", e))
-        })?;
-
-    let email_id = email_submission.email_id().unwrap();
-    println!("Email-ID: {}", email_id);
-
-    client
-        .email_submission_create(email_id, identity_id)
-        .await
-        .map_err(|e| {
-            actix_web::error::ErrorInternalServerError(format!("Failed to send email: {}", e))
-        })?;
+    // Send via SMTP
+    internal_send_email(&state.config.clone().unwrap().email, &to, &subject, &body).await;
 
     Ok(HttpResponse::Ok().finish())
 }

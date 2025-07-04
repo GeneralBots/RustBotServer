@@ -42,7 +42,6 @@ sudo apt install gnome-tweaks
     QT_IM_MODULE=cedilla
 
 "
-
-
-sudo iptables -t nat -A PREROUTING -p tcp --dport 3389 -j DNAT --to-destination $CONTAINER_IP:3389
-sudo iptables -A FORWARD -p tcp -d $CONTAINER_IP --dport 3389 -j ACCEPT
+port=3389
+lxc config device remove "$PARAM_TENANT"-desktop "port-$port" 2>/dev/null || true
+lxc config device add "$PARAM_TENANT"-desktop "port-$port" proxy listen=tcp:0.0.0.0:$port connect=tcp:127.0.0.1:$port
