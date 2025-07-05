@@ -54,6 +54,7 @@ pub struct AIConfig {
     pub endpoint: String,
 }
 
+    
 impl AppConfig {
     pub fn database_url(&self) -> String {
         format!(

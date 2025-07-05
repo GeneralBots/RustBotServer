@@ -3,8 +3,8 @@ use actix_web::error::ErrorInternalServerError;
 use actix_web::http::header::ContentType;
 use actix_web::{web, HttpResponse, Result};
 use lettre::{transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
-use serde::{Deserialize, Serialize};
-use tokio_stream::StreamExt;
+use serde::Serialize;
+
 use mailparse::{parse_mail, MailHeaderMap};  // Added MailHeaderMap import
 use imap::types::{Seq};
 

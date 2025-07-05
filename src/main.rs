@@ -2,12 +2,13 @@ use actix_cors::Cors;
 use actix_web::http::header;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
-use sqlx::PgPool;
+
 
 use services::config::*;
 use services::email::*;
 use services::file::*;
 use services::state::*;
+use services::llm::*;
 
 mod services;
 
@@ -46,6 +47,8 @@ async fn main() -> std::io::Result<()> {
             .service(get_emails)
             .service(list_emails)
             .service(send_email)
+            .service(chat_stream)
+            .service(chat)
     })
     .bind((config.server.host.clone(), config.server.port))?
     .run()
