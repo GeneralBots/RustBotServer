@@ -24,13 +24,13 @@ sudo netfilter-persistent save
 lxc launch images:debian/12 "${PARAM_TENANT}-dns" -c security.privileged=true
 until lxc exec "${PARAM_TENANT}-dns" -- true; do sleep 3; done
 
-# Remove existing proxy devices
-lxc config device remove "${PARAM_TENANT}-dns" dns-udp
-lxc config device remove "${PARAM_TENANT}-dns" dns-tcp
+lxc config device remove pragmatismo-dns dns-udp
+lxc config device remove pragmatismo-dns dns-tcp
 
-# Add correct proxy configuration
-lxc config device add "${PARAM_TENANT}-dns" dns-udp proxy listen=udp:0.0.0.0:53 connect=udp:127.0.0.1:53
-lxc config device add "${PARAM_TENANT}-dns" dns-tcp proxy listen=tcp:0.0.0.0:53 connect=tcp:127.0.0.1:53
+# Forward HOST's public IP:53 → CONTAINER's 0.0.0.0:53
+lxc config device add pragmatismo-dns dns-udp proxy listen=udp:$GB_PUBLIC_IP:53 connect=udp:0.0.0.0:53
+lxc config device add pragmatismo-dns dns-tcp proxy listen=tcp:$GB_PUBLIC_IP:53 connect=tcp:0.0.0.0:53
+
 
 lxc exec "${PARAM_TENANT}-dns" -- bash -c "
 mkdir /opt/gbo
