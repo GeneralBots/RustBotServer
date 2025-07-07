@@ -29,18 +29,56 @@ pub fn from_config(config: &AIConfig) -> AzureConfig {
         .with_deployment_id(&config.instance)
 }
 
+use serde_json::json;
 #[derive(serde::Deserialize)]
 struct ChatRequest {
     input: String,
-}#[actix_web::post("/chat")]
+    context: String,
+
+}
+#[derive(serde::Serialize)]
+struct ChatResponse {
+    text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    action: Option<ChatAction>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(tag = "type", content = "content")]
+enum ChatAction {
+    ReplyEmail { content: String },
+    // Add other action variants here as needed
+}
+
+#[actix_web::post("/chat")]
 pub async fn chat(
-    web::Json(request): web::Json<ChatRequest>,
+    web::Json(request): web::Json<String>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, actix_web::Error> {
     let azure_config = from_config(&state.config.clone().unwrap().ai);
     let open_ai = OpenAI::new(azure_config);
 
-    let response = match open_ai.invoke(&request.input).await {
+    // Parse the context JSON
+    let context: serde_json::Value = match serde_json::from_str(&request.context) {
+        Ok(ctx) => ctx,
+        Err(_) => serde_json::json!({})
+    };
+
+    // Check view type and prepare appropriate prompt
+    let view_type = context.get("viewType").and_then(|v| v.as_str()).unwrap_or("");
+    let (prompt, might_trigger_action) = match view_type {
+        "email" => (
+            format!(
+                "Respond to this email: {}. Keep it professional and concise. \
+                If the email requires a response, provide one in the 'replyEmail' action format.",
+                request.input
+            ),
+            true,
+        ),
+        _ => (request.input, false),
+    };
+
+    let response_text = match open_ai.invoke(&prompt).await {
         Ok(res) => res,
         Err(err) => {
             eprintln!("Error invoking API: {}", err);
@@ -49,9 +87,22 @@ pub async fn chat(
             ));
         }
     };
-    Ok(HttpResponse::Ok().body(response))
-}
 
+    // Prepare response with potential action
+    let mut chat_response = ChatResponse {
+        text: response_text.clone(),
+        action: None,
+    };
+
+    // If in email view and the response looks like an email reply, add action
+    if might_trigger_action && view_type == "email" {
+        chat_response.action = Some(ChatAction::ReplyEmail {
+            content: response_text,
+        });
+    }
+
+    Ok(HttpResponse::Ok().json(chat_response))
+}
 
 #[actix_web::post("/stream")]
 pub async fn chat_stream(
