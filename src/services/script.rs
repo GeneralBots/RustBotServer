@@ -20,140 +20,156 @@ impl ScriptService {
         engine.set_allow_looping(true);
 
         // Register custom syntax for FOR EACH loop
-        engine.register_custom_syntax(
-            &["FOR", "EACH", "$ident$", "in", "$expr$", "$block$"],
-            false, // Not a statement
-            |context, inputs| {
-                // Simple implementation - just return unit for now
-                Ok(Dynamic::UNIT)
-            },
-        ).unwrap();
+        engine
+            .register_custom_syntax(
+                &["FOR", "EACH", "$ident$", "in", "$expr$", "$block$"],
+                false, // Not a statement
+                |context, inputs| {
+                    // Simple implementation - just return unit for now
+                    Ok(Dynamic::UNIT)
+                },
+            )
+            .unwrap();
 
         // FIND command: FIND "table", "filter"
-        engine.register_custom_syntax(
-            &["FIND", "$expr$", ",", "$expr$"],
-            false, // Expression, not statement
-            |context, inputs| {
-                let table_name = context.eval_expression_tree(&inputs[0])?;
-                let filter = context.eval_expression_tree(&inputs[1])?;
+        engine
+            .register_custom_syntax(
+                &["FIND", "$expr$", ",", "$expr$"],
+                false, // Expression, not statement
+                |context, inputs| {
+                    let table_name = context.eval_expression_tree(&inputs[0])?;
+                    let filter = context.eval_expression_tree(&inputs[1])?;
 
-                let table_str = table_name.to_string();
-                let filter_str = filter.to_string();
+                    let table_str = table_name.to_string();
+                    let filter_str = filter.to_string();
 
-                let result = json!({
-                    "command": "find",
-                    "table": table_str,
-                    "filter": filter_str,
-                    "results": []
-                });
-                Ok(Dynamic::from(result.to_string()))
-            },
-        ).unwrap();
+                    let result = json!({
+                        "command": "find",
+                        "table": table_str,
+                        "filter": filter_str,
+                        "results": []
+                    });
+                    println!("SET executed: {}", result.to_string());
+                    Ok(Dynamic::from(result.to_string()))
+                },
+            )
+            .unwrap();
 
         // SET command: SET "table", "key", "value"
-        engine.register_custom_syntax(
-            &["SET", "$expr$", ",", "$expr$", ",", "$expr$"],
-            true, // Statement
-            |context, inputs| {
-                let table_name = context.eval_expression_tree(&inputs[0])?;
-                let key_value = context.eval_expression_tree(&inputs[1])?;
-                let value = context.eval_expression_tree(&inputs[2])?;
+        engine
+            .register_custom_syntax(
+                &["SET", "$expr$", ",", "$expr$", ",", "$expr$"],
+                true, // Statement
+                |context, inputs| {
+                    let table_name = context.eval_expression_tree(&inputs[0])?;
+                    let key_value = context.eval_expression_tree(&inputs[1])?;
+                    let value = context.eval_expression_tree(&inputs[2])?;
 
-                let table_str = table_name.to_string();
-                let key_str = key_value.to_string();
-                let value_str = value.to_string();
+                    let table_str = table_name.to_string();
+                    let key_str = key_value.to_string();
+                    let value_str = value.to_string();
 
-                let result = json!({
-                    "command": "set",
-                    "status": "success",
-                    "table": table_str,
-                    "key": key_str,
-                    "value": value_str
-                });
-                println!("SET executed: {}", result.to_string());
-                Ok(Dynamic::UNIT)
-            },
-        ).unwrap();
+                    let result = json!({
+                        "command": "set",
+                        "status": "success",
+                        "table": table_str,
+                        "key": key_str,
+                        "value": value_str
+                    });
+                    println!("SET executed: {}", result.to_string());
+                    Ok(Dynamic::UNIT)
+                },
+            )
+            .unwrap();
 
         // GET command: GET "url"
-        engine.register_custom_syntax(
-            &["GET", "$expr$"],
-            false, // Expression, not statement
-            |context, inputs| {
-                let url = context.eval_expression_tree(&inputs[0])?;
-                let url_str = url.to_string();
-
-                Ok(format!("Content from {}", url_str).into())
-            },
-        ).unwrap();
+        engine
+            .register_custom_syntax(
+                &["GET", "$expr$"],
+                false, // Expression, not statement
+                |context, inputs| {
+                    let url = context.eval_expression_tree(&inputs[0])?;
+                    let url_str = url.to_string();
+                        
+                    Ok(format!("Content from {}", url_str).into())
+                },
+            )
+            .unwrap();
 
         // CREATE SITE command: CREATE SITE "name", "company", "website", "template", "prompt"
-        engine.register_custom_syntax(
-            &["CREATE", "SITE", "$expr$", ",", "$expr$", ",", "$expr$", ",", "$expr$", ",", "$expr$"],
-            true, // Statement
-            |context, inputs| {
-                if inputs.len() < 5 {
-                    return Err("Not enough arguments for CREATE SITE".into());
-                }
+        engine
+            .register_custom_syntax(
+                &[
+                    "CREATE", "SITE", "$expr$", ",", "$expr$", ",", "$expr$", ",", "$expr$", ",",
+                    "$expr$",
+                ],
+                true, // Statement
+                |context, inputs| {
+                    if inputs.len() < 5 {
+                        return Err("Not enough arguments for CREATE SITE".into());
+                    }
 
-                let name = context.eval_expression_tree(&inputs[0])?;
-                let company = context.eval_expression_tree(&inputs[1])?;
-                let website = context.eval_expression_tree(&inputs[2])?;
-                let template = context.eval_expression_tree(&inputs[3])?;
-                let prompt = context.eval_expression_tree(&inputs[4])?;
+                    let name = context.eval_expression_tree(&inputs[0])?;
+                    let company = context.eval_expression_tree(&inputs[1])?;
+                    let website = context.eval_expression_tree(&inputs[2])?;
+                    let template = context.eval_expression_tree(&inputs[3])?;
+                    let prompt = context.eval_expression_tree(&inputs[4])?;
 
-                let result = json!({
-                    "command": "create_site",
-                    "name": name.to_string(),
-                    "company": company.to_string(),
-                    "website": website.to_string(),
-                    "template": template.to_string(),
-                    "prompt": prompt.to_string()
-                });
-                println!("CREATE SITE executed: {}", result.to_string());
-                Ok(Dynamic::UNIT)
-            },
-        ).unwrap();
+                    let result = json!({
+                        "command": "create_site",
+                        "name": name.to_string(),
+                        "company": company.to_string(),
+                        "website": website.to_string(),
+                        "template": template.to_string(),
+                        "prompt": prompt.to_string()
+                    });
+                    println!("CREATE SITE executed: {}", result.to_string());
+                    Ok(Dynamic::UNIT)
+                },
+            )
+            .unwrap();
 
         // CREATE DRAFT command: CREATE DRAFT "to", "subject", "body"
-        engine.register_custom_syntax(
-            &["CREATE", "DRAFT", "$expr$", ",", "$expr$", ",", "$expr$"],
-            true, // Statement
-            |context, inputs| {
-                if inputs.len() < 3 {
-                    return Err("Not enough arguments for CREATE DRAFT".into());
-                }
+        engine
+            .register_custom_syntax(
+                &["CREATE", "DRAFT", "$expr$", ",", "$expr$", ",", "$expr$"],
+                true, // Statement
+                |context, inputs| {
+                    if inputs.len() < 3 {
+                        return Err("Not enough arguments for CREATE DRAFT".into());
+                    }
 
-                let to = context.eval_expression_tree(&inputs[0])?;
-                let subject = context.eval_expression_tree(&inputs[1])?;
-                let body = context.eval_expression_tree(&inputs[2])?;
+                    let to = context.eval_expression_tree(&inputs[0])?;
+                    let subject = context.eval_expression_tree(&inputs[1])?;
+                    let body = context.eval_expression_tree(&inputs[2])?;
 
-                let result = json!({
-                    "command": "create_draft",
-                    "to": to.to_string(),
-                    "subject": subject.to_string(),
-                    "body": body.to_string()
-                });
-                println!("CREATE DRAFT executed: {}", result.to_string());
-                Ok(Dynamic::UNIT)
-            },
-        ).unwrap();
+                    let result = json!({
+                        "command": "create_draft",
+                        "to": to.to_string(),
+                        "subject": subject.to_string(),
+                        "body": body.to_string()
+                    });
+                    println!("CREATE DRAFT executed: {}", result.to_string());
+                    Ok(Dynamic::UNIT)
+                },
+            )
+            .unwrap();
 
         // PRINT command
-        engine.register_custom_syntax(
-            &["PRINT", "$expr$"],
-            true, // Statement
-            |context, inputs| {
-                let value = context.eval_expression_tree(&inputs[0])?;
-                println!("{}", value);
-                Ok(Dynamic::UNIT)
-            },
-        ).unwrap();
+        engine
+            .register_custom_syntax(
+                &["PRINT", "$expr$"],
+                true, // Statement
+                |context, inputs| {
+                    let value = context.eval_expression_tree(&inputs[0])?;
+                    println!("{}", value);
+                    Ok(Dynamic::UNIT)
+                },
+            )
+            .unwrap();
 
         // Register web service functions
-        engine.register_fn("web_get", |url: &str| {
-            format!("Response from {}", url)
-        });
+        engine.register_fn("web_get", |url: &str| format!("Response from {}", url));
 
         ScriptService {
             engine,
@@ -165,17 +181,17 @@ impl ScriptService {
     fn preprocess_basic_script(&self, script: &str) -> String {
         let mut result = String::new();
         let mut in_block = false;
-        
+
         for line in script.lines() {
             let trimmed = line.trim();
-            
+
             // Skip empty lines and comments
             if trimmed.is_empty() || trimmed.starts_with("//") || trimmed.starts_with("REM") {
                 result.push_str(line);
                 result.push('\n');
                 continue;
             }
-            
+
             // Track block state
             if trimmed.contains('{') {
                 in_block = true;
@@ -183,11 +199,11 @@ impl ScriptService {
             if trimmed.contains('}') {
                 in_block = false;
             }
-            
+
             // Check if line starts with our custom commands (these don't need semicolons)
             let custom_commands = ["SET", "CREATE", "PRINT", "FOR", "FIND", "GET"];
             let is_custom_command = custom_commands.iter().any(|&cmd| trimmed.starts_with(cmd));
-            
+
             if is_custom_command || in_block {
                 // Custom commands and block content don't need semicolons
                 result.push_str(line);
@@ -200,17 +216,16 @@ impl ScriptService {
             }
             result.push('\n');
         }
-        
+
         result
     }
-pub fn compile(&self, script: &str) -> Result<rhai::AST, Box<EvalAltResult>> {
-    let processed_script = self.preprocess_basic_script(script);
-    match self.engine.compile(&processed_script) {
-        Ok(ast) => Ok(ast),
-        Err(parse_error) => Err(Box::new(EvalAltResult::from(parse_error))),
+    pub fn compile(&self, script: &str) -> Result<rhai::AST, Box<EvalAltResult>> {
+        let processed_script = self.preprocess_basic_script(script);
+        match self.engine.compile(&processed_script) {
+            Ok(ast) => Ok(ast),
+            Err(parse_error) => Err(Box::new(EvalAltResult::from(parse_error))),
+        }
     }
-}
-
 
     pub fn run(&self, ast: &rhai::AST) -> Result<Dynamic, Box<EvalAltResult>> {
         self.engine.eval_ast(ast)
@@ -239,7 +254,7 @@ mod tests {
     #[test]
     fn test_basic_script_without_semicolons() {
         let service = ScriptService::new();
-        
+
         // Test BASIC-style script without semicolons
         let script = r#"
 json = FIND "users", "name=John"
@@ -249,7 +264,7 @@ CREATE SITE "mysite", "My Company", "mycompany.com", "basic", "Create a professi
 CREATE DRAFT "client@example.com", "Project Update", "Here's the latest update..."
 PRINT "Script completed successfully"
         "#;
-        
+
         let result = service.execute_basic_script(script);
         assert!(result.is_ok());
     }
@@ -257,7 +272,7 @@ PRINT "Script completed successfully"
     #[test]
     fn test_preprocessing() {
         let service = ScriptService::new();
-        
+
         let script = r#"
 json = FIND "users", "name=John"
 SET "users", "name=John", "age=30"
@@ -267,9 +282,9 @@ if x > 10 {
     PRINT "Large number"
 }
         "#;
-        
+
         let processed = service.preprocess_basic_script(script);
-        
+
         // Should add semicolons to regular statements but not custom commands
         assert!(processed.contains("let x = 42;"));
         assert!(processed.contains("json = FIND"));
@@ -280,7 +295,7 @@ if x > 10 {
     #[test]
     fn test_individual_commands() {
         let service = ScriptService::new();
-        
+
         let commands = vec![
             r#"SET "users", "name=John", "age=30""#,
             r#"CREATE SITE "mysite", "My Company", "mycompany.com", "basic", "Create a professional site""#,
@@ -297,14 +312,14 @@ if x > 10 {
     #[test]
     fn test_block_statements() {
         let service = ScriptService::new();
-        
+
         let script = r#"
 if true {
     PRINT "Inside block"
     PRINT "Another statement"
 }
         "#;
-        
+
         let result = service.execute_basic_script(script);
         assert!(result.is_ok());
     }

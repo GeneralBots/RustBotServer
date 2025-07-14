@@ -24,6 +24,8 @@ async fn main() -> std::io::Result<()> {
     let json = FIND "users", "name=John"
     let x=2
     let text = GET "example.com"
+    let nome = "table"
+    let d = FIND nome, "car=2"
     "#;
     
     match script_service.compile(script) {
