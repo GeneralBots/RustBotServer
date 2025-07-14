@@ -3,16 +3,18 @@
 # Define container limits in an associative array
 declare -A container_limits=(
     # Pattern       Memory    CPU Allowance
-     ["*tables*"]="2048MB:25ms/100ms"
-     ["*proxy*"]="512MB:25ms/100ms"
-     ["*directory*"]="512MB:25ms/100ms"
-     ["*drive*"]="1024MB:25ms/100ms"
-     ["*email*"]="1024MB:20ms/100ms"
-     ["*webmail*"]="1024MB:20ms/100ms"
+     ["*tables*"]="2048MB:50ms/100ms"
+     ["*dns*"]="512MB:50ms/100ms"
+     ["*doc-editor*"]="512MB:50ms/100ms"
+     ["*proxy*"]="512MB:50ms/100ms"
+     ["*directory*"]="512MB:50ms/100ms"
+     ["*drive*"]="1024MB:50ms/100ms"
+     ["*email*"]="2048MB:90ms/100ms"
+     ["*webmail*"]="2048MB:90ms/100ms"
      ["*bot*"]="2048MB:50ms/100ms"
-     ["*meeting*"]="1024MB:20ms/100ms"
-     ["*alm*"]="512MB:20ms/100ms"
-     ["*alm-ci*"]="4096MB:80ms/100ms"
+     ["*meeting*"]="1024MB:50ms/100ms"
+     ["*alm*"]="512MB:50ms/100ms"
+     ["*alm-ci*"]="4096MB:50ms/100ms"
 )
 
 # Default values (for containers that don't match any pattern)

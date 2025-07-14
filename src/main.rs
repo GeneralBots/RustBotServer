@@ -3,7 +3,8 @@ use actix_web::http::header;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 
-
+use services::script
+::*;
 use services::config::*;
 use services::email::*;
 use services::file::*;
@@ -16,6 +17,25 @@ mod services;
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let config = AppConfig::from_env();
+
+   let script_service = ScriptService::new();
+    
+    let script = r#"
+    let json = FIND "users", "name=John"
+    let x=2
+    let text = GET "example.com"
+    "#;
+    
+    match script_service.compile(script) {
+        Ok(ast) => {
+            match script_service.run(&ast) {
+                Ok(result) => println!("Script executed successfully: {:?}", result),
+                Err(e) => eprintln!("Error executing script: {}", e),
+            }
+        },
+        Err(e) => eprintln!("Error compiling script: {}", e),
+    }
+
 
     let db_url = config.database_url();
     //let db = PgPool::connect(&db_url).await.unwrap();

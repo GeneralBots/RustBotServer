@@ -6,6 +6,9 @@ HOST_LOGS="$HOST_BASE/logs"
 mkdir -p "$HOST_BASE" "$HOST_CONF" "$HOST_DATA" "$HOST_LOGS"
 chmod -R 750 "$HOST_BASE"
 
+lxc network set lxdbr0 user.dns.nameservers $PARAM_DNS_INTERNAL_IP,8.8.8.8,1.1.1.1
+lxc network set lxdbr0 dns.mode managed
+
 # Clear existing rules
 sudo iptables -F
 

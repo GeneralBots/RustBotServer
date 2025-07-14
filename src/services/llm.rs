@@ -59,7 +59,7 @@ pub async fn chat(
     let open_ai = OpenAI::new(azure_config);
 
     // Parse the context JSON
-    let context: serde_json::Value = match serde_json::from_str(&request.context) {
+    let context: serde_json::Value = match serde_json::from_str(&request) {
         Ok(ctx) => ctx,
         Err(_) => serde_json::json!({})
     };
@@ -71,11 +71,11 @@ pub async fn chat(
             format!(
                 "Respond to this email: {}. Keep it professional and concise. \
                 If the email requires a response, provide one in the 'replyEmail' action format.",
-                request.input
+                request
             ),
             true,
         ),
-        _ => (request.input, false),
+        _ => (request, false),
     };
 
     let response_text = match open_ai.invoke(&prompt).await {
