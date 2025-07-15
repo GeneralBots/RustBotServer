@@ -10,7 +10,8 @@ use services::email::*;
 use services::file::*;
 use services::state::*;
 use services::llm::*;
-
+use sqlx::PgPool;
+//use services:: find::*;
 mod services;
 
 #[actix_web::main]
@@ -18,14 +19,23 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let config = AppConfig::from_env();
 
+
+//    let table_str = "rob";
+//     let filter_str = "ACTION=EMUL1";
+    
+//     match execute_find(table_str, filter_str) {
+//         Ok(result) => println!("{}", result),
+//         Err(e) => eprintln!("Error: {}", e),
+//     }
+
+
    let script_service = ScriptService::new();
     
     let script = r#"
-    let json = FIND "users", "name=John"
-    let x=2
+
+    let list = FIND "rob", "ACTION=EMUL1"
     let text = GET "example.com"
-    let nome = "table"
-    let d = FIND nome, "car=2"
+
     "#;
     
     match script_service.compile(script) {
@@ -40,16 +50,16 @@ async fn main() -> std::io::Result<()> {
 
 
     let db_url = config.database_url();
-    //let db = PgPool::connect(&db_url).await.unwrap();
+    let db = PgPool::connect(&db_url).await.unwrap();
 
-    // let minio_client = init_minio(&config)
-    //     .await
-    //     .expect("Failed to initialize Minio");
+    let minio_client = init_minio(&config)
+        .await
+        .expect("Failed to initialize Minio");
 
     let app_state = web::Data::new(AppState {
-        db: None,
+        db: db.into(),
         config: Some(config.clone()),
-        minio_client: None,
+        minio_client: minio_client.into(),
     });
     
     // Start HTTP server

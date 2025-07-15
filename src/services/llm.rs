@@ -1,8 +1,6 @@
-use actix_web::http::Error;
 use actix_web::{
-    get, post,
     web::{self, Bytes},
-    App, HttpResponse, HttpServer, Responder,
+    HttpResponse, Responder,
 };
 use anyhow::Result;
 use futures::StreamExt;
@@ -17,7 +15,7 @@ use langchain_rust::{
     schemas::messages::Message,
     template_fstring,
 };
-use std::env;
+
 
 use crate::services::{config::AIConfig, state::AppState};
 
@@ -29,7 +27,6 @@ pub fn from_config(config: &AIConfig) -> AzureConfig {
         .with_deployment_id(&config.instance)
 }
 
-use serde_json::json;
 #[derive(serde::Deserialize)]
 struct ChatRequest {
     input: String,
@@ -112,15 +109,6 @@ pub async fn chat_stream(
     let azure_config = from_config(&state.config.clone().unwrap().ai);
     let open_ai = OpenAI::new(azure_config);
 
-    let response = match open_ai.invoke("Why is the sky blue?").await {
-        Ok(res) => res,
-        Err(err) => {
-            eprintln!("Error invoking API: {}", err);
-            return Err(actix_web::error::ErrorInternalServerError(
-                "Failed to invoke OpenAI API",
-            ));
-        }
-    };
 
     let prompt = message_formatter![
         fmt_message!(Message::new_system_message(

@@ -10,6 +10,10 @@ pub struct ScriptService {
     module_resolver: StaticModuleResolver,
 }
 
+
+
+
+
 impl ScriptService {
     pub fn new() -> Self {
         let mut engine = Engine::new();
@@ -91,6 +95,7 @@ impl ScriptService {
                     let url = context.eval_expression_tree(&inputs[0])?;
                     let url_str = url.to_string();
                         
+                    println!("GET executed: {}", url_str.to_string());
                     Ok(format!("Content from {}", url_str).into())
                 },
             )
