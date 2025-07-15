@@ -71,7 +71,7 @@ async fn main() -> std::io::Result<()> {
             .allowed_header(header::CONTENT_TYPE)
             .max_age(3600);
         App::new()
-            .wrap(cors)
+            //.wrap(cors)
             .app_data(app_state.clone())
             .service(upload_file)
             .service(list_file)
