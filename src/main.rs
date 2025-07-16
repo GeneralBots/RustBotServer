@@ -32,11 +32,12 @@ async fn main() -> std::io::Result<()> {
    let script_service = ScriptService::new();
     
     let script = r#"
-
+    let items = [   1, 2, 3, 4]
+    FOR EACH item IN items  
+        PRINT item
+    NEXT item   
     let list = FIND "rob", "ACTION=EMUL1"
-    let text = GET "example.com"
-
-    "#;
+    let text = GET "example.com" "#;
     
     match script_service.compile(script) {
         Ok(ast) => {

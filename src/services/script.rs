@@ -1,7 +1,6 @@
 use rhai::module_resolvers::StaticModuleResolver;
-use rhai::{
-    Dynamic, Engine, EvalAltResult, ImmutableString, LexError, ParseError, ParseErrorType, Position,
-};
+use rhai::{Array, Dynamic, Engine, FnPtr, Scope};
+use rhai::{EvalAltResult, ImmutableString, LexError, ParseError, ParseErrorType, Position};
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -9,10 +8,6 @@ pub struct ScriptService {
     engine: Engine,
     module_resolver: StaticModuleResolver,
 }
-
-
-
-
 
 impl ScriptService {
     pub fn new() -> Self {
@@ -23,16 +18,67 @@ impl ScriptService {
         engine.set_allow_anonymous_fn(true);
         engine.set_allow_looping(true);
 
-        // Register custom syntax for FOR EACH loop
+        use rhai::{Array, Dynamic, Engine, Scope};
+
+        // Register FOR EACH loop with NEXT
         engine
             .register_custom_syntax(
-                &["FOR", "EACH", "$ident$", "in", "$expr$", "$block$"],
-                false, // Not a statement
+                &[
+                    "FOR", "EACH", "$ident$", "IN", "$expr$", "$block$","NEXT", "$ident$",
+                ],
+                false,
                 |context, inputs| {
-                    // Simple implementation - just return unit for now
+                    // Get the iterator variable names
+                    let loop_var = inputs[0].get_string_value().unwrap();
+                    let next_var = inputs[3].get_string_value().unwrap();
+
+                    // Verify variable names match
+                    if loop_var != next_var {
+                        return Err(format!(
+                            "NEXT variable '{}' doesn't match FOR EACH variable '{}'",
+                            next_var, loop_var
+                        )
+                        .into());
+                    }
+
+                    // Evaluate the collection expression
+                    let collection = context.eval_expression_tree(&inputs[1])?;
+
+                    // Get the block content as a string
+                    let block = inputs[2].get_string_value().unwrap_or_default();
+
+                    // Convert to array
+                    let array: Array = if collection.is_array() {
+                        collection.cast()
+                    } else {
+                        return Err("FOR EACH can only iterate over arrays".into());
+                    };
+
+                    // Create a new scope for the loop
+                    let mut scope = Scope::new();
+
+                    for item in array {
+                        // Set the variable in the scope
+                        scope.set_value(loop_var.clone(), item);
+
+                        // Evaluate the block with the new scope
+                        match context.engine().eval_with_scope::<()>(&mut scope, &block) {
+                            Ok(_) => (),
+                            Err(e) if e.to_string() == "EXIT FOR" => break,
+                            Err(e) => return Err(e),
+                        }
+                    }
+
                     Ok(Dynamic::UNIT)
                 },
             )
+            .unwrap();
+
+        // Register EXIT FOR
+        engine
+            .register_custom_syntax(&["EXIT", "FOR"], false, |_context, _inputs| {
+                Err("EXIT FOR".into())
+            })
             .unwrap();
 
         // FIND command: FIND "table", "filter"
@@ -94,7 +140,7 @@ impl ScriptService {
                 |context, inputs| {
                     let url = context.eval_expression_tree(&inputs[0])?;
                     let url_str = url.to_string();
-                        
+
                     println!("GET executed: {}", url_str.to_string());
                     Ok(format!("Content from {}", url_str).into())
                 },
@@ -182,10 +228,10 @@ impl ScriptService {
         }
     }
 
-    /// Preprocesses BASIC-style script to handle semicolon-free syntax
     fn preprocess_basic_script(&self, script: &str) -> String {
         let mut result = String::new();
-        let mut in_block = false;
+        let mut for_stack: Vec<usize> = Vec::new();
+        let mut current_indent = 0;
 
         for line in script.lines() {
             let trimmed = line.trim();
@@ -197,24 +243,63 @@ impl ScriptService {
                 continue;
             }
 
-            // Track block state
-            if trimmed.contains('{') {
-                in_block = true;
-            }
-            if trimmed.contains('}') {
-                in_block = false;
+            // Handle FOR EACH start
+            if trimmed.starts_with("FOR EACH") {
+                for_stack.push(current_indent);
+                result.push_str(&" ".repeat(current_indent));
+                result.push_str(trimmed);
+                result.push_str("{\n");
+                current_indent += 4;
+                result.push_str(&" ".repeat(current_indent));
+                result.push('\n');
+                continue;
             }
 
-            // Check if line starts with our custom commands (these don't need semicolons)
-            let custom_commands = ["SET", "CREATE", "PRINT", "FOR", "FIND", "GET"];
-            let is_custom_command = custom_commands.iter().any(|&cmd| trimmed.starts_with(cmd));
+            // Handle NEXT
+            if trimmed.starts_with("NEXT") {
+                if let Some(expected_indent) = for_stack.pop() {
+                    if (current_indent - 4) != expected_indent {
+                        panic!("NEXT without matching FOR EACH");
+                    }
+                    current_indent = current_indent - 4;
+                    result.push_str(&" ".repeat(current_indent));
+                    result.push_str("}\n");
+                    result.push_str(&" ".repeat(current_indent));
+                    result.push_str(trimmed);
+                    result.push_str(";\n");
+                    continue;
+                } else {
+                    panic!("NEXT without matching FOR EACH");
+                }
+            }
 
-            if is_custom_command || in_block {
-                // Custom commands and block content don't need semicolons
-                result.push_str(line);
+            // Handle EXIT FOR
+            if trimmed == "EXIT FOR" {
+                result.push_str(&" ".repeat(current_indent));
+                result.push_str(trimmed);
+                result.push('\n');
+                continue;
+            }
+
+            // Handle regular lines - no semicolons added for BASIC-style commands
+            result.push_str(&" ".repeat(current_indent));
+
+            let basic_commands = [
+                "SET", "CREATE", "PRINT", "FOR", "FIND", "GET", "EXIT", "IF", "THEN", "ELSE",
+                "END IF", "WHILE", "WEND", "DO", "LOOP", "NEXT"
+            ];
+
+            let is_basic_command = basic_commands.iter().any(|&cmd| trimmed.starts_with(cmd));
+            let is_control_flow = trimmed.starts_with("IF")
+                || trimmed.starts_with("ELSE")
+                || trimmed.starts_with("END IF");
+
+            if is_basic_command || !for_stack.is_empty() || is_control_flow {
+                // Don'ta add semicolons for BASIC-style commands or inside blocks
+                result.push_str(trimmed);
             } else {
-                // Regular statements need semicolons
-                result.push_str(line);
+                // Add semicolons only for non-BASIC statements
+                result.push_str(trimmed);
                 if !trimmed.ends_with(';') && !trimmed.ends_with('{') && !trimmed.ends_with('}') {
                     result.push(';');
                 }
@@ -222,8 +307,14 @@ impl ScriptService {
             result.push('\n');
         }
 
+        if !for_stack.is_empty() {
+            panic!("Unclosed FOR EACH loop");
+        }
+
         result
     }
+    
+    /// Preprocesses BASIC-style script to handle semicolon-free syntax
     pub fn compile(&self, script: &str) -> Result<rhai::AST, Box<EvalAltResult>> {
         let processed_script = self.preprocess_basic_script(script);
         match self.engine.compile(&processed_script) {
