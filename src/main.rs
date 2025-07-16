@@ -35,7 +35,7 @@ async fn main() -> std::io::Result<()> {
     let items = [   1, 2, 3, 4]
     FOR EACH item IN items  
         PRINT item
-    NEXT item   
+    NEXT item
     let list = FIND "rob", "ACTION=EMUL1"
     let text = GET "example.com" "#;
     

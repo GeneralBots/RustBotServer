@@ -20,59 +20,65 @@ impl ScriptService {
 
         use rhai::{Array, Dynamic, Engine, Scope};
 
-        // Register FOR EACH loop with NEXT
-        engine
-            .register_custom_syntax(
-                &[
-                    "FOR", "EACH", "$ident$", "IN", "$expr$", "$block$","NEXT", "$ident$",
-                ],
-                false,
-                |context, inputs| {
-                    // Get the iterator variable names
-                    let loop_var = inputs[0].get_string_value().unwrap();
-                    let next_var = inputs[3].get_string_value().unwrap();
+engine
+    .register_custom_syntax(
+        &[
+            "FOR", "EACH", "$ident$", "IN", "$expr$", "$block$", "NEXT", "$ident$",
+        ],
+        true,  // We're modifying the scope by adding the loop variable
+        |context, inputs| {
+            // Get the iterator variable names
+            let loop_var = inputs[0].get_string_value().unwrap();
+            let next_var = inputs[3].get_string_value().unwrap();
 
-                    // Verify variable names match
-                    if loop_var != next_var {
-                        return Err(format!(
-                            "NEXT variable '{}' doesn't match FOR EACH variable '{}'",
-                            next_var, loop_var
-                        )
-                        .into());
+            // Verify variable names match
+            if loop_var != next_var {
+                return Err(format!(
+                    "NEXT variable '{}' doesn't match FOR EACH variable '{}'",
+                    next_var, loop_var
+                )
+                .into());
+            }
+
+            // Evaluate the collection expression
+            let collection = context.eval_expression_tree(&inputs[1])?;
+
+            // Get the block as an expression tree
+            let block = &inputs[2];
+
+            // Convert to array
+            let array: Array = if collection.is_array() {
+                collection.cast()
+            } else {
+                return Err("FOR EACH can only iterate over arrays".into());
+            };
+
+            // Remember original scope length
+            let orig_len = context.scope().len();
+
+            for item in array {
+                // Push the loop variable into the scope
+                context.scope_mut().push(loop_var.to_string(), item);
+
+                // Evaluate the block with the current scope
+                match context.eval_expression_tree(block) {
+                    Ok(_) => (),
+                    Err(e) if e.to_string() == "EXIT FOR" => break,
+                    Err(e) => {
+                        // Rewind the scope before returning error
+                        context.scope_mut().rewind(orig_len);
+                        return Err(e);
                     }
+                }
 
-                    // Evaluate the collection expression
-                    let collection = context.eval_expression_tree(&inputs[1])?;
+                // Remove the loop variable for next iteration
+                context.scope_mut().rewind(orig_len);
+            }
 
-                    // Get the block content as a string
-                    let block = inputs[2].get_string_value().unwrap_or_default();
-
-                    // Convert to array
-                    let array: Array = if collection.is_array() {
-                        collection.cast()
-                    } else {
-                        return Err("FOR EACH can only iterate over arrays".into());
-                    };
-
-                    // Create a new scope for the loop
-                    let mut scope = Scope::new();
-
-                    for item in array {
-                        // Set the variable in the scope
-                        scope.set_value(loop_var.clone(), item);
-
-                        // Evaluate the block with the new scope
-                        match context.engine().eval_with_scope::<()>(&mut scope, &block) {
-                            Ok(_) => (),
-                            Err(e) if e.to_string() == "EXIT FOR" => break,
-                            Err(e) => return Err(e),
-                        }
-                    }
-
-                    Ok(Dynamic::UNIT)
-                },
-            )
-            .unwrap();
+            Ok(Dynamic::UNIT)
+        },
+    )
+    .unwrap();
 
         // Register EXIT FOR
         engine
@@ -266,7 +272,8 @@ impl ScriptService {
                     result.push_str("}\n");
                     result.push_str(&" ".repeat(current_indent));
                     result.push_str(trimmed);
-                    result.push_str(";\n");
+                    result.push(';'); 
+                    result.push('\n'); 
                     continue;
                 } else {
                     panic!("NEXT without matching FOR EACH");
@@ -286,7 +293,7 @@ impl ScriptService {
 
             let basic_commands = [
                 "SET", "CREATE", "PRINT", "FOR", "FIND", "GET", "EXIT", "IF", "THEN", "ELSE",
-                "END IF", "WHILE", "WEND", "DO", "LOOP", "NEXT"
+                "END IF", "WHILE", "WEND", "DO", "LOOP",
             ];
 
             let is_basic_command = basic_commands.iter().any(|&cmd| trimmed.starts_with(cmd));
