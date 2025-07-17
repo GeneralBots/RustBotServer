@@ -57,6 +57,9 @@ After=network.target
 User=gbuser
 ExecStart=/opt/gbo/bin/coredns -conf /opt/gbo/conf/Corefile
 Restart=always
+StandardOutput=append:/opt/gbo/logs/stdout.log
+StandardError=append:/opt/gbo/logs/stderr.log
+
 [Install]
 WantedBy=multi-user.target
 EOF2

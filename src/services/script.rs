@@ -1,12 +1,55 @@
+use smartstring::SmartString;
+use anyhow::Error;
 use rhai::module_resolvers::StaticModuleResolver;
 use rhai::{Array, Dynamic, Engine, FnPtr, Scope};
 use rhai::{EvalAltResult, ImmutableString, LexError, ParseError, ParseErrorType, Position};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 
 pub struct ScriptService {
     engine: Engine,
     module_resolver: StaticModuleResolver,
+}
+
+fn json_value_to_dynamic(value: &Value) -> Dynamic {
+    match value {
+        Value::Null => Dynamic::UNIT,
+        Value::Bool(b) => Dynamic::from(*b),
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Dynamic::from(i)
+            } else if let Some(f) = n.as_f64() {
+                Dynamic::from(f)
+            } else {
+                Dynamic::UNIT
+            }
+        }
+        Value::String(s) => Dynamic::from(s.clone()),
+        Value::Array(arr) => Dynamic::from(
+            arr.iter()
+                .map(json_value_to_dynamic)
+                .collect::<rhai::Array>(),
+        ),
+        Value::Object(obj) => Dynamic::from(
+            obj.iter()
+                .map(|(k, v)| (SmartString::from(k), json_value_to_dynamic(v)))
+                .collect::<rhai::Map>(),
+        ),
+    }
+}
+
+/// Converts any value to an array - single values become single-element arrays
+fn to_array(value: Dynamic) -> Array {
+    if value.is_array() {
+        // Already an array - return as-is
+        value.cast::<Array>()
+    } else if value.is_unit() || value.is::<()>() {
+        // Handle empty/unit case
+        Array::new()
+    } else {
+        // Convert single value to single-element array
+        Array::from([value])
+    }
 }
 
 impl ScriptService {
@@ -18,67 +61,76 @@ impl ScriptService {
         engine.set_allow_anonymous_fn(true);
         engine.set_allow_looping(true);
 
-        use rhai::{Array, Dynamic, Engine, Scope};
+        engine
+            .register_custom_syntax(
+                &[
+                    "FOR", "EACH", "$ident$", "IN", "$expr$", "$block$", "NEXT", "$ident$",
+                ],
+                true, // We're modifying the scope by adding the loop variable
+                |context, inputs| {
+                    // Get the iterator variable names
+                    let loop_var = inputs[0].get_string_value().unwrap();
+                    let next_var = inputs[3].get_string_value().unwrap();
 
-engine
-    .register_custom_syntax(
-        &[
-            "FOR", "EACH", "$ident$", "IN", "$expr$", "$block$", "NEXT", "$ident$",
-        ],
-        true,  // We're modifying the scope by adding the loop variable
-        |context, inputs| {
-            // Get the iterator variable names
-            let loop_var = inputs[0].get_string_value().unwrap();
-            let next_var = inputs[3].get_string_value().unwrap();
-
-            // Verify variable names match
-            if loop_var != next_var {
-                return Err(format!(
-                    "NEXT variable '{}' doesn't match FOR EACH variable '{}'",
-                    next_var, loop_var
-                )
-                .into());
-            }
-
-            // Evaluate the collection expression
-            let collection = context.eval_expression_tree(&inputs[1])?;
-
-            // Get the block as an expression tree
-            let block = &inputs[2];
-
-            // Convert to array
-            let array: Array = if collection.is_array() {
-                collection.cast()
-            } else {
-                return Err("FOR EACH can only iterate over arrays".into());
-            };
-
-            // Remember original scope length
-            let orig_len = context.scope().len();
-
-            for item in array {
-                // Push the loop variable into the scope
-                context.scope_mut().push(loop_var.to_string(), item);
-
-                // Evaluate the block with the current scope
-                match context.eval_expression_tree(block) {
-                    Ok(_) => (),
-                    Err(e) if e.to_string() == "EXIT FOR" => break,
-                    Err(e) => {
-                        // Rewind the scope before returning error
-                        context.scope_mut().rewind(orig_len);
-                        return Err(e);
+                    // Verify variable names match
+                    if loop_var != next_var {
+                        return Err(format!(
+                            "NEXT variable '{}' doesn't match FOR EACH variable '{}'",
+                            next_var, loop_var
+                        )
+                        .into());
                     }
-                }
 
-                // Remove the loop variable for next iteration
-                context.scope_mut().rewind(orig_len);
-            }
+                    // Evaluate the collection expression
+                    let collection = context.eval_expression_tree(&inputs[1])?;
 
-            Ok(Dynamic::UNIT)
-        },
-    )
-    .unwrap();
+                    // Debug: Print the collection type
+                    println!("Collection type: {}", collection.type_name());
+                    let ccc = collection.clone();
+                    // Convert to array - with proper error handling
+                    let array = match collection.into_array() {
+                        Ok(arr) => arr,
+                        Err(err) => {
+                            return Err(format!(
+                                "foreach expected array, got {}: {}",
+                                ccc.type_name(),
+                                err
+                            )
+                            .into());
+                        }
+                    };
+                    // Get the block as an expression tree
+                    let block = &inputs[2];
+
+                    // Remember original scope length
+                    let orig_len = context.scope().len();
+
+                    for item in array {
+                        // Push the loop variable into the scope
+                        context.scope_mut().push(loop_var.clone(), item);
+
+                        // Evaluate the block with the current scope
+                        match context.eval_expression_tree(block) {
+                            Ok(_) => (),
+                            Err(e) if e.to_string() == "EXIT FOR" => {
+                                context.scope_mut().rewind(orig_len);
+                                break;
+                            }
+                            Err(e) => {
+                                // Rewind the scope before returning error
+                                context.scope_mut().rewind(orig_len);
+                                return Err(e);
+                            }
+                        }
+
+                        // Remove the loop variable for next iteration
+                        context.scope_mut().rewind(orig_len);
+                    }
+
+                    Ok(Dynamic::UNIT)
+                },
+            )
+            .unwrap();
 
         // Register EXIT FOR
         engine
@@ -99,14 +151,37 @@ engine
                     let table_str = table_name.to_string();
                     let filter_str = filter.to_string();
 
+                    use serde_json::json;
+
                     let result = json!({
                         "command": "find",
                         "table": table_str,
                         "filter": filter_str,
-                        "results": []
+                        "results": [
+                            {
+                                "id": 1,
+                                "name": "dummy1"
+                            },
+                            {
+                                "id": 2,
+                                "name": "dummy2"
+                            }
+                        ]
                     });
-                    println!("SET executed: {}", result.to_string());
-                    Ok(Dynamic::from(result.to_string()))
+
+                    if let serde_json::Value::Object(ref obj) = result {
+                        if let Some(results_value) = obj.get("results") {
+                            let dynamic_results = json_value_to_dynamic(results_value);
+
+                            // Now you can work with it as Dynamic
+                            let array = to_array(dynamic_results);
+                            Ok(Dynamic::from(array))
+                        } else {
+                            Err("No results found".into())
+                        }
+                    } else {
+                        Err("Invalid result format".into())
+                    }
                 },
             )
             .unwrap();
@@ -272,8 +347,8 @@ engine
                     result.push_str("}\n");
                     result.push_str(&" ".repeat(current_indent));
                     result.push_str(trimmed);
-                    result.push(';'); 
-                    result.push('\n'); 
+                    result.push(';');
+                    result.push('\n');
                     continue;
                 } else {
                     panic!("NEXT without matching FOR EACH");
@@ -304,6 +379,7 @@ engine
             if is_basic_command || !for_stack.is_empty() || is_control_flow {
                 // Don'ta add semicolons for BASIC-style commands or inside blocks
                 result.push_str(trimmed);
+                result.push(';');
             } else {
                 // Add semicolons only for non-BASIC statements
                 result.push_str(trimmed);
@@ -320,7 +396,7 @@ engine
 
         result
     }
-    
+
     /// Preprocesses BASIC-style script to handle semicolon-free syntax
     pub fn compile(&self, script: &str) -> Result<rhai::AST, Box<EvalAltResult>> {
         let processed_script = self.preprocess_basic_script(script);
