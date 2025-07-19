@@ -14,25 +14,31 @@ use sqlx::PgPool;
 //use services:: find::*;
 mod services;
 
-#[actix_web::main]
+#[tokio::main(flavor = "multi_thread")]
+
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let config = AppConfig::from_env();
+    let db_url = config.database_url();
+    let db_custom_url = config.database_custom_url();
+    let db = PgPool::connect(&db_url).await.unwrap();
+    let db_custom = PgPool::connect(&db_custom_url).await.unwrap();
 
+    let minio_client = init_minio(&config)
+        .await
+        .expect("Failed to initialize Minio");
 
-//    let table_str = "rob";
-//     let filter_str = "ACTION=EMUL1";
-    
-//     match execute_find(table_str, filter_str) {
-//         Ok(result) => println!("{}", result),
-//         Err(e) => eprintln!("Error: {}", e),
-//     }
+    let app_state = web::Data::new(AppState {
+        db: db.into(),
+        db_custom: db_custom.into(),
+        config: Some(config.clone()),
+        minio_client: minio_client.into(),
+    });
 
-
-   let script_service = ScriptService::new();
+   let script_service = ScriptService::new(&app_state.clone());
     
     let script = r#"
-    let items  = FIND "rob", "ACTION=EMUL1"
+    let items  = FIND "gb.rob", "ACTION=EMUL1"
     FOR EACH item IN items  
         let text = GET "example.com" 
         PRINT item.name
@@ -49,18 +55,6 @@ async fn main() -> std::io::Result<()> {
     }
 
 
-    let db_url = config.database_url();
-    let db = PgPool::connect(&db_url).await.unwrap();
-
-    let minio_client = init_minio(&config)
-        .await
-        .expect("Failed to initialize Minio");
-
-    let app_state = web::Data::new(AppState {
-        db: db.into(),
-        config: Some(config.clone()),
-        minio_client: minio_client.into(),
-    });
     
     // Start HTTP server
     HttpServer::new(move || {

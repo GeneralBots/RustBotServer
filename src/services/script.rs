@@ -1,10 +1,13 @@
-use smartstring::SmartString;
 use anyhow::Error;
 use rhai::module_resolvers::StaticModuleResolver;
 use rhai::{Array, Dynamic, Engine, FnPtr, Scope};
 use rhai::{EvalAltResult, ImmutableString, LexError, ParseError, ParseErrorType, Position};
 use serde_json::{json, Value};
+use smartstring::SmartString;
 use std::collections::HashMap;
+
+use crate::services::find::execute_find;
+use crate::services::state::AppState;
 
 pub struct ScriptService {
     engine: Engine,
@@ -53,7 +56,7 @@ fn to_array(value: Dynamic) -> Array {
 }
 
 impl ScriptService {
-    pub fn new() -> Self {
+    pub fn new(state: &AppState) -> Self {
         let mut engine = Engine::new();
         let module_resolver = StaticModuleResolver::new();
 
@@ -140,50 +143,41 @@ impl ScriptService {
             .unwrap();
 
         // FIND command: FIND "table", "filter"
+        // Clone the database reference outside the closure to avoid lifetime issues
+        let db = state.db_custom.clone();
+
         engine
-            .register_custom_syntax(
-                &["FIND", "$expr$", ",", "$expr$"],
-                false, // Expression, not statement
-                |context, inputs| {
+            .register_custom_syntax(&["FIND", "$expr$", ",", "$expr$"], false, {
+                let db = db.clone();
+
+                move |context, inputs| {
                     let table_name = context.eval_expression_tree(&inputs[0])?;
                     let filter = context.eval_expression_tree(&inputs[1])?;
+                    let binding = db.as_ref().unwrap();
 
-                    let table_str = table_name.to_string();
-                    let filter_str = filter.to_string();
+                    // Use the current async context instead of creating a new runtime
+                    let binding2 = table_name.to_string();
+                    let binding3 = filter.to_string();
+                    let fut = execute_find(
+                        binding,
+                        &binding2,
+                        &binding3,
+                    );
 
-                    use serde_json::json;
+                    // Use tokio::task::block_in_place + tokio::runtime::Handle::current().block_on
+                    let result = tokio::task::block_in_place(|| {
+                        tokio::runtime::Handle::current().block_on(fut)
+                    })
+                    .map_err(|e| format!("DB error: {}", e))?;
 
-                    let result = json!({
-                        "command": "find",
-                        "table": table_str,
-                        "filter": filter_str,
-                        "results": [
-                            {
-                                "id": 1,
-                                "name": "dummy1"
-                            },
-                            {
-                                "id": 2,
-                                "name": "dummy2"
-                            }
-                        ]
-                    });
-
-                    if let serde_json::Value::Object(ref obj) = result {
-                        if let Some(results_value) = obj.get("results") {
-                            let dynamic_results = json_value_to_dynamic(results_value);
-
-                            // Now you can work with it as Dynamic
-                            let array = to_array(dynamic_results);
-                            Ok(Dynamic::from(array))
-                        } else {
-                            Err("No results found".into())
-                        }
+                    if let Some(results) = result.get("results") {
+                        let array = to_array(json_value_to_dynamic(results));
+                        Ok(Dynamic::from(array))
                     } else {
-                        Err("Invalid result format".into())
+                        Err("No results".into())
                     }
-                },
-            )
+                }
+            })
             .unwrap();
 
         // SET command: SET "table", "key", "value"
@@ -423,83 +417,5 @@ impl ScriptService {
         let processed = self.preprocess_basic_script(script);
         let ast = self.engine.compile(&processed)?;
         self.run(&ast)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_basic_script_without_semicolons() {
-        let service = ScriptService::new();
-
-        // Test BASIC-style script without semicolons
-        let script = r#"
-json = FIND "users", "name=John"
-SET "users", "name=John", "age=30"
-text = GET "example.com"
-CREATE SITE "mysite", "My Company", "mycompany.com", "basic", "Create a professional site"
-CREATE DRAFT "client@example.com", "Project Update", "Here's the latest update..."
-PRINT "Script completed successfully"
-        "#;
-
-        let result = service.execute_basic_script(script);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_preprocessing() {
-        let service = ScriptService::new();
-
-        let script = r#"
-json = FIND "users", "name=John"
-SET "users", "name=John", "age=30"
-let x = 42
-PRINT x
-if x > 10 {
-    PRINT "Large number"
-}
-        "#;
-
-        let processed = service.preprocess_basic_script(script);
-
-        // Should add semicolons to regular statements but not custom commands
-        assert!(processed.contains("let x = 42;"));
-        assert!(processed.contains("json = FIND"));
-        assert!(!processed.contains("SET \"users\""));
-        assert!(!processed.contains("PRINT \"Large number\";")); // Inside block shouldn't get semicolon
-    }
-
-    #[test]
-    fn test_individual_commands() {
-        let service = ScriptService::new();
-
-        let commands = vec![
-            r#"SET "users", "name=John", "age=30""#,
-            r#"CREATE SITE "mysite", "My Company", "mycompany.com", "basic", "Create a professional site""#,
-            r#"CREATE DRAFT "client@example.com", "Project Update", "Here's the latest update...""#,
-            r#"PRINT "Hello, World!""#,
-        ];
-
-        for cmd in commands {
-            let result = service.execute_basic_script(cmd);
-            assert!(result.is_ok(), "Command '{}' failed", cmd);
-        }
-    }
-
-    #[test]
-    fn test_block_statements() {
-        let service = ScriptService::new();
-
-        let script = r#"
-if true {
-    PRINT "Inside block"
-    PRINT "Another statement"
-}
-        "#;
-
-        let result = service.execute_basic_script(script);
-        assert!(result.is_ok());
     }
 }

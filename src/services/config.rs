@@ -5,6 +5,8 @@ pub struct AppConfig {
     pub minio: MinioConfig,
     pub server: ServerConfig,
     pub database: DatabaseConfig,
+    pub database_custom: DatabaseConfig,
+
     pub email: EmailConfig,
     pub ai: AIConfig,
 }
@@ -67,6 +69,18 @@ impl AppConfig {
         )
     }
 
+        pub fn database_custom_url(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}/{}",
+            self.database_custom.username,
+            self.database_custom.password,
+            self.database_custom.server,
+            self.database_custom.port,
+            self.database_custom.database
+        )
+    }
+
+
     pub fn from_env() -> Self {
         let database = DatabaseConfig {
             username: env::var("TABLES_USERNAME").unwrap_or_else(|_| "user".to_string()),
@@ -77,6 +91,17 @@ impl AppConfig {
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(5432),
             database: env::var("TABLES_DATABASE").unwrap_or_else(|_| "db".to_string()),
+        };
+
+        let database_custom = DatabaseConfig {
+            username: env::var("CUSTOM_USERNAME").unwrap_or_else(|_| "user".to_string()),
+            password: env::var("CUSTOM_PASSWORD").unwrap_or_else(|_| "pass".to_string()),
+            server: env::var("CUSTOM_SERVER").unwrap_or_else(|_| "localhost".to_string()),
+            port: env::var("CUSTOM_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(5432),
+            database: env::var("CUSTOM_DATABASE").unwrap_or_else(|_| "db".to_string()),
         };
 
         let minio = MinioConfig {
@@ -125,6 +150,7 @@ impl AppConfig {
                     .unwrap_or(8080),
             },
             database,
+            database_custom,
             email,
             ai,
         }

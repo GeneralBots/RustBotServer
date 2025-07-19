@@ -52,7 +52,7 @@ pub async fn chat(
     
     // Define available tools based on context
     let tools = get_available_tools(&request.context);
-    
+
     // Build the prompt with context and available tools
     let system_prompt = build_system_prompt(&request.context, &tools);
     let user_message = format!("{}\n\nUser input: {}", system_prompt, request.input);
