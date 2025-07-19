@@ -42,16 +42,12 @@ pub struct EmailConfig {
     pub port: u16,
     pub username: String,
     pub password: String,
-    pub reject_unauthorized: bool,
 }
 
 #[derive(Clone)]
 pub struct AIConfig {
-    pub image_model: String,
-    pub embedding_model: String,
     pub instance: String,
     pub key: String,
-    pub llm_model: String,
     pub version: String,
     pub endpoint: String,
 }
@@ -124,18 +120,11 @@ impl AppConfig {
                 .expect("EMAIL_PORT must be a number"),
             username: env::var("EMAIL_USER").expect("EMAIL_USER not set"),
             password: env::var("EMAIL_PASS").expect("EMAIL_PASS not set"),
-            reject_unauthorized: env::var("EMAIL_REJECT_UNAUTHORIZED")
-                .unwrap_or_else(|_| "false".to_string())
-                .parse()
-                .unwrap_or(false),
         };
 
         let ai = AIConfig {
-            image_model: env::var("AI_IMAGE_MODEL").expect("AI_IMAGE_MODEL not set"),
-            embedding_model: env::var("AI_EMBEDDING_MODEL").expect("AI_EMBEDDING_MODEL not set"),
             instance: env::var("AI_INSTANCE").expect("AI_INSTANCE not set"),
             key: env::var("AI_KEY").expect("AI_KEY not set"),
-            llm_model: env::var("AI_LLM_MODEL").expect("AI_LLM_MODEL not set"),
             version: env::var("AI_VERSION").expect("AI_VERSION not set"),
             endpoint: env::var("AI_ENDPOINT").expect("AI_ENDPOINT not set"),
         };

@@ -16,7 +16,6 @@ use langchain_rust::{
     template_fstring,
 };
 
-
 use crate::services::{config::AIConfig, state::AppState};
 
 pub fn from_config(config: &AIConfig) -> AzureConfig {
@@ -30,9 +29,8 @@ pub fn from_config(config: &AIConfig) -> AzureConfig {
 #[derive(serde::Deserialize)]
 struct ChatRequest {
     input: String,
-    context: String,
-
 }
+
 #[derive(serde::Serialize)]
 struct ChatResponse {
     text: String,
@@ -58,11 +56,14 @@ pub async fn chat(
     // Parse the context JSON
     let context: serde_json::Value = match serde_json::from_str(&request) {
         Ok(ctx) => ctx,
-        Err(_) => serde_json::json!({})
+        Err(_) => serde_json::json!({}),
     };
 
     // Check view type and prepare appropriate prompt
-    let view_type = context.get("viewType").and_then(|v| v.as_str()).unwrap_or("");
+    let view_type = context
+        .get("viewType")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     let (prompt, might_trigger_action) = match view_type {
         "email" => (
             format!(
@@ -108,7 +109,6 @@ pub async fn chat_stream(
 ) -> Result<impl Responder, actix_web::Error> {
     let azure_config = from_config(&state.config.clone().unwrap().ai);
     let open_ai = OpenAI::new(azure_config);
-
 
     let prompt = message_formatter![
         fmt_message!(Message::new_system_message(

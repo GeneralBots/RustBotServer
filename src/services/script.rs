@@ -1,17 +1,14 @@
-use anyhow::Error;
-use rhai::module_resolvers::StaticModuleResolver;
-use rhai::{Array, Dynamic, Engine, FnPtr, Scope};
-use rhai::{EvalAltResult, ImmutableString, LexError, ParseError, ParseErrorType, Position};
+use rhai::{Array, Dynamic, Engine};
+use rhai::{EvalAltResult};
 use serde_json::{json, Value};
 use smartstring::SmartString;
-use std::collections::HashMap;
 
-use crate::services::find::execute_find;
+use crate::services::keywords::find::execute_find;
 use crate::services::state::AppState;
 
 pub struct ScriptService {
     engine: Engine,
-    module_resolver: StaticModuleResolver,
+    
 }
 
 fn json_value_to_dynamic(value: &Value) -> Dynamic {
@@ -58,8 +55,7 @@ fn to_array(value: Dynamic) -> Array {
 impl ScriptService {
     pub fn new(state: &AppState) -> Self {
         let mut engine = Engine::new();
-        let module_resolver = StaticModuleResolver::new();
-
+        
         // Configure engine for BASIC-like syntax
         engine.set_allow_anonymous_fn(true);
         engine.set_allow_looping(true);
@@ -110,7 +106,7 @@ impl ScriptService {
 
                     for item in array {
                         // Push the loop variable into the scope
-                        context.scope_mut().push(loop_var.clone(), item);
+                        context.scope_mut().push(loop_var, item);
 
                         // Evaluate the block with the current scope
                         match context.eval_expression_tree(block) {
@@ -299,7 +295,6 @@ impl ScriptService {
 
         ScriptService {
             engine,
-            module_resolver,
         }
     }
 
@@ -402,20 +397,5 @@ impl ScriptService {
 
     pub fn run(&self, ast: &rhai::AST) -> Result<Dynamic, Box<EvalAltResult>> {
         self.engine.eval_ast(ast)
-    }
-
-    pub fn call_web_service(
-        &self,
-        endpoint: &str,
-        data: HashMap<String, String>,
-    ) -> Result<String, Box<EvalAltResult>> {
-        Ok(format!("Called {} with {:?}", endpoint, data))
-    }
-
-    /// Execute a BASIC-style script without semicolons
-    pub fn execute_basic_script(&self, script: &str) -> Result<Dynamic, Box<EvalAltResult>> {
-        let processed = self.preprocess_basic_script(script);
-        let ast = self.engine.compile(&processed)?;
-        self.run(&ast)
     }
 }

@@ -1,10 +1,8 @@
 use serde_json::{json, Value};
-use sqlx::postgres::PgPoolOptions;
 use sqlx::Column; // Required for .name() method
 use sqlx::TypeInfo; // Required for .type_info() method
 use sqlx::{postgres::PgRow, PgPool, Row};
 use std::error::Error;
-use std::time::Duration;
 
 
 pub async fn execute_find(
