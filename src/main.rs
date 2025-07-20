@@ -17,6 +17,8 @@ mod services;
 
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     let config = AppConfig::from_env();
     let db_url = config.database_url();
     let db_custom_url = config.database_custom_url();
@@ -36,7 +38,7 @@ async fn main() -> std::io::Result<()> {
 
     let script_service = ScriptService::new(&app_state.clone());
 
-    const TEXT : &str = include_str!("prompts/business/data-enrichment.bas");
+    const TEXT: &str = include_str!("prompts/business/data-enrichment.bas");
 
     match script_service.compile(TEXT) {
         Ok(ast) => match script_service.run(&ast) {
@@ -48,10 +50,8 @@ async fn main() -> std::io::Result<()> {
 
     // Start HTTP server
     HttpServer::new(move || {
-        
         let cors = Cors::default()
             .send_wildcard()
-            .allowed_origin("*")
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
             .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
             .allowed_header(header::CONTENT_TYPE)
