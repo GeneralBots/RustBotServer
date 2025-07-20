@@ -1,301 +1,33 @@
-use rhai::{Array, Dynamic, Engine};
-use rhai::{EvalAltResult};
-use serde_json::{json, Value};
-use smartstring::SmartString;
-
-use crate::services::keywords::find::execute_find;
+use rhai::{ Dynamic, Engine, EvalAltResult};
+use crate::services::keywords::create_draft::{create_draft_keyword};
+use crate::services::keywords::create_site::create_site_keyword;
+use crate::services::keywords::find::{find_keyword};
+use crate::services::keywords::for_next::for_keyword;
+use crate::services::keywords::get::get_keyword;
+use crate::services::keywords::print::print_keyword;
+use crate::services::keywords::set::set_keyword;
 use crate::services::state::AppState;
 
 pub struct ScriptService {
     engine: Engine,
-    
-}
-
-fn json_value_to_dynamic(value: &Value) -> Dynamic {
-    match value {
-        Value::Null => Dynamic::UNIT,
-        Value::Bool(b) => Dynamic::from(*b),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                Dynamic::from(i)
-            } else if let Some(f) = n.as_f64() {
-                Dynamic::from(f)
-            } else {
-                Dynamic::UNIT
-            }
-        }
-        Value::String(s) => Dynamic::from(s.clone()),
-        Value::Array(arr) => Dynamic::from(
-            arr.iter()
-                .map(json_value_to_dynamic)
-                .collect::<rhai::Array>(),
-        ),
-        Value::Object(obj) => Dynamic::from(
-            obj.iter()
-                .map(|(k, v)| (SmartString::from(k), json_value_to_dynamic(v)))
-                .collect::<rhai::Map>(),
-        ),
-    }
-}
-
-/// Converts any value to an array - single values become single-element arrays
-fn to_array(value: Dynamic) -> Array {
-    if value.is_array() {
-        // Already an array - return as-is
-        value.cast::<Array>()
-    } else if value.is_unit() || value.is::<()>() {
-        // Handle empty/unit case
-        Array::new()
-    } else {
-        // Convert single value to single-element array
-        Array::from([value])
-    }
 }
 
 impl ScriptService {
     pub fn new(state: &AppState) -> Self {
         let mut engine = Engine::new();
-        
+       
         // Configure engine for BASIC-like syntax
         engine.set_allow_anonymous_fn(true);
         engine.set_allow_looping(true);
-
-        engine
-            .register_custom_syntax(
-                &[
-                    "FOR", "EACH", "$ident$", "IN", "$expr$", "$block$", "NEXT", "$ident$",
-                ],
-                true, // We're modifying the scope by adding the loop variable
-                |context, inputs| {
-                    // Get the iterator variable names
-                    let loop_var = inputs[0].get_string_value().unwrap();
-                    let next_var = inputs[3].get_string_value().unwrap();
-
-                    // Verify variable names match
-                    if loop_var != next_var {
-                        return Err(format!(
-                            "NEXT variable '{}' doesn't match FOR EACH variable '{}'",
-                            next_var, loop_var
-                        )
-                        .into());
-                    }
-
-                    // Evaluate the collection expression
-                    let collection = context.eval_expression_tree(&inputs[1])?;
-
-                    // Debug: Print the collection type
-                    println!("Collection type: {}", collection.type_name());
-                    let ccc = collection.clone();
-                    // Convert to array - with proper error handling
-                    let array = match collection.into_array() {
-                        Ok(arr) => arr,
-                        Err(err) => {
-                            return Err(format!(
-                                "foreach expected array, got {}: {}",
-                                ccc.type_name(),
-                                err
-                            )
-                            .into());
-                        }
-                    };
-                    // Get the block as an expression tree
-                    let block = &inputs[2];
-
-                    // Remember original scope length
-                    let orig_len = context.scope().len();
-
-                    for item in array {
-                        // Push the loop variable into the scope
-                        context.scope_mut().push(loop_var, item);
-
-                        // Evaluate the block with the current scope
-                        match context.eval_expression_tree(block) {
-                            Ok(_) => (),
-                            Err(e) if e.to_string() == "EXIT FOR" => {
-                                context.scope_mut().rewind(orig_len);
-                                break;
-                            }
-                            Err(e) => {
-                                // Rewind the scope before returning error
-                                context.scope_mut().rewind(orig_len);
-                                return Err(e);
-                            }
-                        }
-
-                        // Remove the loop variable for next iteration
-                        context.scope_mut().rewind(orig_len);
-                    }
-
-                    Ok(Dynamic::UNIT)
-                },
-            )
-            .unwrap();
-
-        // Register EXIT FOR
-        engine
-            .register_custom_syntax(&["EXIT", "FOR"], false, |_context, _inputs| {
-                Err("EXIT FOR".into())
-            })
-            .unwrap();
-
-        // FIND command: FIND "table", "filter"
-        // Clone the database reference outside the closure to avoid lifetime issues
-        let db = state.db_custom.clone();
-
-        engine
-            .register_custom_syntax(&["FIND", "$expr$", ",", "$expr$"], false, {
-                let db = db.clone();
-
-                move |context, inputs| {
-                    let table_name = context.eval_expression_tree(&inputs[0])?;
-                    let filter = context.eval_expression_tree(&inputs[1])?;
-                    let binding = db.as_ref().unwrap();
-
-                    // Use the current async context instead of creating a new runtime
-                    let binding2 = table_name.to_string();
-                    let binding3 = filter.to_string();
-                    let fut = execute_find(
-                        binding,
-                        &binding2,
-                        &binding3,
-                    );
-
-                    // Use tokio::task::block_in_place + tokio::runtime::Handle::current().block_on
-                    let result = tokio::task::block_in_place(|| {
-                        tokio::runtime::Handle::current().block_on(fut)
-                    })
-                    .map_err(|e| format!("DB error: {}", e))?;
-
-                    if let Some(results) = result.get("results") {
-                        let array = to_array(json_value_to_dynamic(results));
-                        Ok(Dynamic::from(array))
-                    } else {
-                        Err("No results".into())
-                    }
-                }
-            })
-            .unwrap();
-
-        // SET command: SET "table", "key", "value"
-        engine
-            .register_custom_syntax(
-                &["SET", "$expr$", ",", "$expr$", ",", "$expr$"],
-                true, // Statement
-                |context, inputs| {
-                    let table_name = context.eval_expression_tree(&inputs[0])?;
-                    let key_value = context.eval_expression_tree(&inputs[1])?;
-                    let value = context.eval_expression_tree(&inputs[2])?;
-
-                    let table_str = table_name.to_string();
-                    let key_str = key_value.to_string();
-                    let value_str = value.to_string();
-
-                    let result = json!({
-                        "command": "set",
-                        "status": "success",
-                        "table": table_str,
-                        "key": key_str,
-                        "value": value_str
-                    });
-                    println!("SET executed: {}", result.to_string());
-                    Ok(Dynamic::UNIT)
-                },
-            )
-            .unwrap();
-
-        // GET command: GET "url"
-        engine
-            .register_custom_syntax(
-                &["GET", "$expr$"],
-                false, // Expression, not statement
-                |context, inputs| {
-                    let url = context.eval_expression_tree(&inputs[0])?;
-                    let url_str = url.to_string();
-
-                    println!("GET executed: {}", url_str.to_string());
-                    Ok(format!("Content from {}", url_str).into())
-                },
-            )
-            .unwrap();
-
-        // CREATE SITE command: CREATE SITE "name", "company", "website", "template", "prompt"
-        engine
-            .register_custom_syntax(
-                &[
-                    "CREATE", "SITE", "$expr$", ",", "$expr$", ",", "$expr$", ",", "$expr$", ",",
-                    "$expr$",
-                ],
-                true, // Statement
-                |context, inputs| {
-                    if inputs.len() < 5 {
-                        return Err("Not enough arguments for CREATE SITE".into());
-                    }
-
-                    let name = context.eval_expression_tree(&inputs[0])?;
-                    let company = context.eval_expression_tree(&inputs[1])?;
-                    let website = context.eval_expression_tree(&inputs[2])?;
-                    let template = context.eval_expression_tree(&inputs[3])?;
-                    let prompt = context.eval_expression_tree(&inputs[4])?;
-
-                    let result = json!({
-                        "command": "create_site",
-                        "name": name.to_string(),
-                        "company": company.to_string(),
-                        "website": website.to_string(),
-                        "template": template.to_string(),
-                        "prompt": prompt.to_string()
-                    });
-                    println!("CREATE SITE executed: {}", result.to_string());
-                    Ok(Dynamic::UNIT)
-                },
-            )
-            .unwrap();
-
-        // CREATE DRAFT command: CREATE DRAFT "to", "subject", "body"
-        engine
-            .register_custom_syntax(
-                &["CREATE", "DRAFT", "$expr$", ",", "$expr$", ",", "$expr$"],
-                true, // Statement
-                |context, inputs| {
-                    if inputs.len() < 3 {
-                        return Err("Not enough arguments for CREATE DRAFT".into());
-                    }
-
-                    let to = context.eval_expression_tree(&inputs[0])?;
-                    let subject = context.eval_expression_tree(&inputs[1])?;
-                    let body = context.eval_expression_tree(&inputs[2])?;
-
-                    let result = json!({
-                        "command": "create_draft",
-                        "to": to.to_string(),
-                        "subject": subject.to_string(),
-                        "body": body.to_string()
-                    });
-                    println!("CREATE DRAFT executed: {}", result.to_string());
-                    Ok(Dynamic::UNIT)
-                },
-            )
-            .unwrap();
-
-        // PRINT command
-        engine
-            .register_custom_syntax(
-                &["PRINT", "$expr$"],
-                true, // Statement
-                |context, inputs| {
-                    let value = context.eval_expression_tree(&inputs[0])?;
-                    println!("{}", value);
-                    Ok(Dynamic::UNIT)
-                },
-            )
-            .unwrap();
-
-        // Register web service functions
-        engine.register_fn("web_get", |url: &str| format!("Response from {}", url));
-
-        ScriptService {
-            engine,
-        }
+        
+        create_draft_keyword(state, &mut engine);
+        create_site_keyword(state, &mut engine);
+        find_keyword(state, &mut engine);
+        for_keyword(state, &mut engine);     
+        get_keyword(state, &mut engine);
+        set_keyword(state, &mut engine);
+        print_keyword(state, &mut engine);
+        ScriptService { engine }
     }
 
     fn preprocess_basic_script(&self, script: &str) -> String {
@@ -370,7 +102,7 @@ impl ScriptService {
                 result.push_str(trimmed);
                 result.push(';');
             } else {
-                // Add semicolons only for non-BASIC statements
+                // Add semicolons only for BASIC statements
                 result.push_str(trimmed);
                 if !trimmed.ends_with(';') && !trimmed.ends_with('{') && !trimmed.ends_with('}') {
                     result.push(';');

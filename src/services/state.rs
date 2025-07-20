@@ -8,6 +8,6 @@ pub struct AppState {
     pub minio_client: Option<Client>,
     pub config: Option<AppConfig>,
     pub db:  Option<sqlx::PgPool>,
-pub db_custom:  Option<sqlx::PgPool>,
+    pub db_custom:  Option<sqlx::PgPool>,
 }
 

@@ -48,6 +48,7 @@ async fn main() -> std::io::Result<()> {
 
     // Start HTTP server
     HttpServer::new(move || {
+        
         let cors = Cors::default()
             .send_wildcard()
             .allowed_origin("*")
@@ -55,6 +56,7 @@ async fn main() -> std::io::Result<()> {
             .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
             .allowed_header(header::CONTENT_TYPE)
             .max_age(3600);
+
         App::new()
             .wrap(cors)
             .app_data(app_state.clone())
