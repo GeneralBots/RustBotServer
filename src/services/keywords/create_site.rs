@@ -1,11 +1,11 @@
 use rhai::Dynamic;
 use rhai::Engine;
-use serde_json::json;
+use std::fs;
+use std::path::Path;
 
 use crate::services::state::AppState;
 
 pub fn create_site_keyword(_state: &AppState, engine: &mut Engine) {
-
     engine
         .register_custom_syntax(
             &[
@@ -13,26 +13,33 @@ pub fn create_site_keyword(_state: &AppState, engine: &mut Engine) {
                 "$expr$",
             ],
             true, // Statement
-            |context, inputs| {
+            move |context, inputs| {
                 if inputs.len() < 5 {
                     return Err("Not enough arguments for CREATE SITE".into());
                 }
 
-                let name = context.eval_expression_tree(&inputs[0])?;
+                let _name = context.eval_expression_tree(&inputs[0])?;
                 let company = context.eval_expression_tree(&inputs[1])?;
-                let website = context.eval_expression_tree(&inputs[2])?;
-                let template = context.eval_expression_tree(&inputs[3])?;
+                let _website = context.eval_expression_tree(&inputs[2])?;
+                let _template = context.eval_expression_tree(&inputs[3])?;
                 let prompt = context.eval_expression_tree(&inputs[4])?;
 
-                let result = json!({
-                    "command": "create_site",
-                    "name": name.to_string(),
-                    "company": company.to_string(),
-                    "website": website.to_string(),
-                    "template": template.to_string(),
-                    "prompt": prompt.to_string()
-                });
-                println!("CREATE SITE executed: {}", result.to_string());
+                // Call the LLM to generate the HTML content
+                let llm_result = context.call_fn::<String>("chat", (prompt.to_string(),))?;
+                
+                // Create the directory structure
+                let base_path = "/opt/gbo/tenants/pragmatismo/proxy/data/websites/sites.pragmatismo.com.br";
+                let site_name = format!("{}bot", company.to_string());
+                let full_path = format!("{}/{}", base_path, site_name);
+                
+                // Create directory if it doesn't exist
+                fs::create_dir_all(&full_path).map_err(|e| e.to_string())?;
+                
+                // Write the HTML file
+                let index_path = Path::new(&full_path).join("index.html");
+                fs::write(index_path, llm_result).map_err(|e| e.to_string())?;
+
+                println!("Site created at: {}", full_path);
                 Ok(Dynamic::UNIT)
             },
         )

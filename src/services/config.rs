@@ -6,7 +6,6 @@ pub struct AppConfig {
     pub server: ServerConfig,
     pub database: DatabaseConfig,
     pub database_custom: DatabaseConfig,
-
     pub email: EmailConfig,
     pub ai: AIConfig,
 }

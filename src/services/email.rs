@@ -160,102 +160,211 @@ fn parse_from_field(from: &str) -> (String, String) {
     ("Unknown".to_string(), from.to_string())
 }
 
-// #[actix_web::post("/emails/suggest-answer/{email_id}")]
-// pub async fn suggest_answer(
-//     path: web::Path<String>,
-//     state: web::Data<AppState>,
-// ) -> Result<HttpResponse, actix_web::Error> {
-//     let email_id = path.into_inner();
-//     let config = state
-//         .config
-//         .as_ref()
-//         .ok_or_else(|| ErrorInternalServerError("Configuration not available"))?;
 
-//     // let mut session = create_imap_session(&config.email).await?;
+#[derive(serde::Deserialize)]
+pub struct SaveDraftRequest {
+    pub to: String,
+    pub subject: String,
+    pub cc: Option<String>,
+    pub text: String,
+}
 
-//     // session
-//     //     .select("INBOX")
-//     //     .await
-//     //     .map_err(|e| ErrorInternalServerError(format!("Failed to select INBOX: {:?}", e)))?;
+#[derive(serde::Serialize)]
+pub struct SaveDraftResponse {
+    pub success: bool,
+    pub message: String,
+    pub draft_id: Option<String>,
+}
 
-//     // let messages = session
-//     //     .fetch(&email_id, "RFC822.HEADER BODY[TEXT]")
-//     //     .await
-//     //     .map_err(|e| ErrorInternalServerError(format!("Failed to fetch email: {:?}", e)))?;
+#[derive(serde::Deserialize)]
+pub struct GetLatestEmailRequest {
+    pub from_email: String,
+}
 
-//     // let msg = messages
-//     //     .iter()
-//     //     .next()
-//     //     .ok_or_else(|| actix_web::error::ErrorNotFound("Email not found"))?;
+#[derive(serde::Serialize)]
+pub struct LatestEmailResponse {
+    pub success: bool,
+    pub email_text: Option<String>,
+    pub message: String,
+}
 
-//     // let header = msg
-//     //     .header()
-//     //     .ok_or_else(|| ErrorInternalServerError("No header found"))?;
+#[actix_web::post("/emails/save_draft")]
+pub async fn save_draft(
+    state: web::Data<AppState>,
+    draft_data: web::Json<SaveDraftRequest>,
+) -> Result<web::Json<SaveDraftResponse>, actix_web::Error> {
+    let config = state
+        .config
+        .as_ref()
+        .ok_or_else(|| ErrorInternalServerError("Configuration not available"))?;
 
-//     // let body = msg
-//     //     .text()
-//     //     .ok_or_else(|| ErrorInternalServerError("No body found"))?;
+    match save_email_draft(&config.email, &draft_data).await {
+        Ok(draft_id) => Ok(web::Json(SaveDraftResponse {
+            success: true,
+            message: "Draft saved successfully".to_string(),
+            draft_id: Some(draft_id),
+        })),
+        Err(e) => Ok(web::Json(SaveDraftResponse {
+            success: false,
+            message: format!("Failed to save draft: {}", e),
+            draft_id: None,
+        }))
+    }
+} 
 
-//     // let header_str = String::from_utf8_lossy(header);
-//     // let mut subject = String::new();
-//     // let mut from_info = String::new();
 
-//     // for line in header_str.lines() {
-//     //     if line.starts_with("Subject: ") {
-//     //         subject = line.strip_prefix("Subject: ").unwrap_or("").to_string();
-//     //     } else if line.starts_with("From: ") {
-//     //         from_info = line.strip_prefix("From: ").unwrap_or("").to_string();
-//     //     }
-//     // }
+pub async fn save_email_draft(
+    email_config: &EmailConfig,
+    draft_data: &SaveDraftRequest,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Establish connection
+    let tls = native_tls::TlsConnector::builder().build()?;
+    let client = imap::connect(
+        (email_config.server.as_str(), 993),
+        email_config.server.as_str(),
+        &tls,
+    )?;
 
-//     // let body_text = String::from_utf8_lossy(body);
+    // Login
+    let mut session = client.login(&email_config.username, &email_config.password)
+        .map_err(|e| format!("Login failed: {:?}", e))?;
 
-//     // let response = serde_json::json!({
-//     //     "suggested_response": "Thank you for your email. I will review this and get back to you shortly.",
-//     //     "prompt": format!(
-//     //         "Email from: {}\nSubject: {}\n\nBody:\n{}\n\n---\n\nPlease draft a professional response to this email.",
-//     //         from_info, subject, body_text.lines().take(20).collect::<Vec<_>>().join("\n")
-//     //     )
-//     // });
+    // Select or create Drafts folder
+    if session.select("Drafts").is_err() {
+        // Try to create Drafts folder if it doesn't exist
+        session.create("Drafts")?;
+        session.select("Drafts")?;
+    }
 
-//     // session.logout().await.ok();
-//     //Ok(HttpResponse::Ok().json(response))
-// }
+    // Create email message
+    let cc_header = draft_data.cc.as_deref()
+        .filter(|cc| !cc.is_empty())
+        .map(|cc| format!("Cc: {}\r\n", cc))
+        .unwrap_or_default();
 
-// #[actix_web::post("/emails/archive/{email_id}")]
-// pub async fn archive_email(
-//     path: web::Path<String>,
-//     state: web::Data<AppState>,
-// ) -> Result<HttpResponse, actix_web::Error> {
-//     let email_id = path.into_inner();
-//     let config = state
-//         .config
-//         .as_ref()
-//         .ok_or_else(|| ErrorInternalServerError("Configuration not available"))?;
+    let email_message = format!(
+        "From: {}\r\nTo: {}\r\n{}Subject: {}\r\nDate: {}\r\n\r\n{}",
+        email_config.username,
+        draft_data.to,
+        cc_header,
+        draft_data.subject,
+        chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S +0000"),
+        draft_data.text
+    );
 
-//     let mut session = create_imap_session(&config.email).await?;
+    // Append to Drafts folder
+    session.append("Drafts", &email_message)?;
+    
+    session.logout()?;
 
-//     session
-//         .select("INBOX")
-//         .await
-//         .map_err(|e| ErrorInternalServerError(format!("Failed to select INBOX: {:?}", e)))?;
+    Ok(chrono::Utc::now().timestamp().to_string())
+}
 
-//     // Create Archive folder if it doesn't exist
-//     session.create("Archive").await.ok(); // Ignore error if folder exists
+#[actix_web::post("/emails/get_latest_from")]
+pub async fn get_latest_email_from(
+    state: web::Data<AppState>,
+    request: web::Json<GetLatestEmailRequest>,
+) -> Result<web::Json<LatestEmailResponse>, actix_web::Error> {
+    let config = state
+        .config
+        .as_ref()
+        .ok_or_else(|| ErrorInternalServerError("Configuration not available"))?;
 
-//     // Move email to Archive folder
-//     session.mv(&email_id, "Archive").await.map_err(|e| {
-//         ErrorInternalServerError(format!("Failed to move email to archive: {:?}", e))
-//     })?;
+    match fetch_latest_email_from_sender(&config.email, &request.from_email).await {
+        Ok(email_text) => Ok(web::Json(LatestEmailResponse {
+            success: true,
+            email_text: Some(email_text),
+            message: "Latest email retrieved successfully".to_string(),
+        })),
+        Err(e) => {
+            if e.to_string().contains("No emails found") {
+                Ok(web::Json(LatestEmailResponse {
+                    success: false,
+                    email_text: None,
+                    message: e.to_string(),
+                }))
+            } else {
+                Err(ErrorInternalServerError(e))
+            }
+        }
+    }
+}
+pub async fn fetch_latest_email_from_sender(
+    email_config: &EmailConfig,
+    from_email: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Establish connection
+    let tls = native_tls::TlsConnector::builder().build()?;
+    let client = imap::connect(
+        (email_config.server.as_str(), 993),
+        email_config.server.as_str(),
+        &tls,
+    )?;
 
-//     session.logout().await.ok();
+    // Login
+    let mut session = client.login(&email_config.username, &email_config.password)
+        .map_err(|e| format!("Login failed: {:?}", e))?;
 
-//     Ok(HttpResponse::Ok().json(serde_json::json!({
-//         "message": "Email archived successfully",
-//         "email_id": email_id,
-//         "archive_folder": "Archive"
-//     })))
-// }
+    // Try to select Archive folder first, then fall back to INBOX
+    if session.select("Archive").is_err() {
+        session.select("INBOX")?;
+    }
+
+    // Search for emails from the specified sender
+    let search_query = format!("FROM \"{}\"", from_email);
+    let messages = session.search(&search_query)?;
+
+    if messages.is_empty() {
+        session.logout()?;
+        return Err(format!("No emails found from {}", from_email).into());
+    }
+
+    // Get the latest message (highest sequence number)
+    let latest_seq = messages.iter().max().unwrap();
+
+    // Fetch the entire message
+    let messages = session.fetch(latest_seq.to_string(), "RFC822")?;
+
+    let mut email_text = String::new();
+
+    for msg in messages.iter() {
+        let body = msg.body().ok_or("No body found in email")?;
+
+        // Parse the complete email message
+        let parsed = parse_mail(body)?;
+
+        // Extract headers
+        let headers = parsed.get_headers();
+        let subject = headers.get_first_value("Subject").unwrap_or_default();
+        let from = headers.get_first_value("From").unwrap_or_default();
+        let date = headers.get_first_value("Date").unwrap_or_default();
+        let to = headers.get_first_value("To").unwrap_or_default();
+
+        // Extract body text
+        let body_text = if let Some(body_part) = parsed.subparts.iter().find(|p| p.ctype.mimetype == "text/plain") {
+            body_part.get_body().unwrap_or_default()
+        } else {
+            parsed.get_body().unwrap_or_default()
+        };
+
+        // Format the email text ready for reply with headers
+        email_text = format!(
+            "--- Original Message ---\nFrom: {}\nTo: {}\nDate: {}\nSubject: {}\n\n{}\n\n--- Reply Above This Line ---\n\n",
+            from, to, date, subject, body_text
+        );
+
+        break; // We only want the first (and should be only) message
+    }
+
+    session.logout()?;
+
+    if email_text.is_empty() {
+        Err("Failed to extract email content".into())
+    } else {
+        Ok(email_text)
+    }
+}
+
 
 #[actix_web::post("/emails/send")]
 pub async fn send_email(

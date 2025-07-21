@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use actix_cors::Cors;
 use actix_web::http::header;
 use actix_web::{web, App, HttpServer};
@@ -10,6 +12,8 @@ use services::llm::*;
 use services::script::*;
 use services::state::*;
 use sqlx::PgPool;
+
+use crate::services::web_automation::BrowserPool;
 //use services:: find::*;
 mod services;
 
@@ -29,11 +33,17 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to initialize Minio");
 
+    let browser_pool = Arc::new(BrowserPool::new(
+        "http://localhost:9515".to_string(),
+        5,
+        "/usr/bin/brave-browser-beta".to_string(),
+    ));
     let app_state = web::Data::new(AppState {
         db: db.into(),
         db_custom: db_custom.into(),
         config: Some(config.clone()),
         minio_client: minio_client.into(),
+        browser_pool: browser_pool.clone(),
     });
 
     let script_service = ScriptService::new(&app_state.clone());

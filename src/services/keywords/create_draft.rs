@@ -1,32 +1,62 @@
+use crate::services::email::SaveDraftRequest;
+use crate::services::email::{fetch_latest_email_from_sender, save_email_draft};
+use crate::services::state::AppState;
 use rhai::Dynamic;
 use rhai::Engine;
-use serde_json::json;
 
-use crate::services::state::AppState;
+pub fn create_draft_keyword(state: &AppState, engine: &mut Engine) {
+    let state_clone = state.clone();
 
-pub fn create_draft_keyword(_state: &AppState, engine: &mut Engine) {
     engine
         .register_custom_syntax(
             &["CREATE", "DRAFT", "$expr$", ",", "$expr$", ",", "$expr$"],
             true, // Statement
-            |context, inputs| {
-                if inputs.len() < 3 {
-                    return Err("Not enough arguments for CREATE DRAFT".into());
-                }
+            move |context, inputs| {
+                // Extract arguments
+                let to = context.eval_expression_tree(&inputs[0])?.to_string();
+                let subject = context.eval_expression_tree(&inputs[1])?.to_string();
+                let reply_text = context.eval_expression_tree(&inputs[2])?.to_string();
 
-                let to = context.eval_expression_tree(&inputs[0])?;
-                let subject = context.eval_expression_tree(&inputs[1])?;
-                let body = context.eval_expression_tree(&inputs[2])?;
+                // Execute async operations using the same pattern as FIND
+                let fut = execute_create_draft(&state_clone, &to, &subject, &reply_text);
+                let result =
+                    tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(fut))
+                        .map_err(|e| format!("Draft creation error: {}", e))?;
 
-                let result = json!({
-                    "command": "create_draft",
-                    "to": to.to_string(),
-                    "subject": subject.to_string(),
-                    "body": body.to_string()
-                });
-                println!("CREATE DRAFT executed: {}", result.to_string());
-                Ok(Dynamic::UNIT)
+                Ok(Dynamic::from(result))
             },
         )
         .unwrap();
+}
+
+async fn execute_create_draft(
+    state: &AppState,
+    to: &str,
+    subject: &str,
+    reply_text: &str,
+) -> Result<String, String> {
+    let get_result = fetch_latest_email_from_sender(&state.config.clone().unwrap().email, to.clone()).await;
+    let email_body = if let Ok(get_result_str) = get_result {
+        if !get_result_str.is_empty() {
+            get_result_str + reply_text
+        } else {
+            "".to_string()
+        }
+    } else {
+        reply_text.to_string()
+    };
+
+    // Create and save draft
+    let draft_request = SaveDraftRequest {
+        to: to.to_string(),
+        subject: subject.to_string(),
+        cc: None,
+        text: email_body,
+    };
+
+    let save_result = match save_email_draft(&state.config.clone().unwrap().email, &draft_request).await {
+        Ok(_) => Ok("Draft saved successfully".to_string()),
+        Err(e) => Err(e.to_string()),
+    };
+    save_result
 }

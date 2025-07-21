@@ -4,8 +4,10 @@ use crate::services::keywords::create_site::create_site_keyword;
 use crate::services::keywords::find::{find_keyword};
 use crate::services::keywords::for_next::for_keyword;
 use crate::services::keywords::get::get_keyword;
+use crate::services::keywords::get_website::get_website_keyword;
 use crate::services::keywords::print::print_keyword;
 use crate::services::keywords::set::set_keyword;
+use crate::services::keywords::wait::wait_keyword;
 use crate::services::state::AppState;
 
 pub struct ScriptService {
@@ -25,7 +27,9 @@ impl ScriptService {
         find_keyword(state, &mut engine);
         for_keyword(state, &mut engine);     
         get_keyword(state, &mut engine);
+        get_website_keyword(state, &mut engine);
         set_keyword(state, &mut engine);
+        wait_keyword(state, &mut engine);
         print_keyword(state, &mut engine);
         ScriptService { engine }
     }
