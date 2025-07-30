@@ -8,7 +8,7 @@ use langchain_rust::{
     chain::{Chain, LLMChainBuilder},
     fmt_message, fmt_template,
     language_models::llm::LLM,
-    llm::{openai::OpenAI, AzureConfig},
+    llm::{openai::OpenAI},
     message_formatter,
     prompt::HumanMessagePromptTemplate,
     prompt_args,
@@ -16,15 +16,7 @@ use langchain_rust::{
     template_fstring,
 };
 
-use crate::services::{config::AIConfig, state::AppState};
-
-pub fn from_config(config: &AIConfig) -> AzureConfig {
-    AzureConfig::default()
-        .with_api_key(&config.key)
-        .with_api_base(&config.endpoint)
-        .with_api_version(&config.version)
-        .with_deployment_id(&config.instance)
-}
+use crate::services::{ state::AppState, utils::azure_from_config};
 
 #[derive(serde::Deserialize)]
 struct ChatRequest {
@@ -50,7 +42,7 @@ pub async fn chat(
     web::Json(request): web::Json<String>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, actix_web::Error> {
-    let azure_config = from_config(&state.config.clone().unwrap().ai);
+    let azure_config = azure_from_config(&state.config.clone().unwrap().ai);
     let open_ai = OpenAI::new(azure_config);
 
     // Parse the context JSON
@@ -107,7 +99,7 @@ pub async fn chat_stream(
     web::Json(request): web::Json<ChatRequest>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, actix_web::Error> {
-    let azure_config = from_config(&state.config.clone().unwrap().ai);
+    let azure_config = azure_from_config(&state.config.clone().unwrap().ai);
     let open_ai = OpenAI::new(azure_config);
 
     let prompt = message_formatter![

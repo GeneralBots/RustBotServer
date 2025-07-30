@@ -4,13 +4,13 @@
 declare -A container_limits=(
     # Pattern       Memory    CPU Allowance
      ["*tables*"]="2048MB:50ms/100ms"
-     ["*dns*"]="512MB:50ms/100ms"
+     ["*dns*"]="2048MB:100ms/100ms"
      ["*doc-editor*"]="512MB:50ms/100ms"
      ["*proxy*"]="512MB:50ms/100ms"
      ["*directory*"]="512MB:50ms/100ms"
      ["*drive*"]="1024MB:50ms/100ms"
-     ["*email*"]="2048MB:90ms/100ms"
-     ["*webmail*"]="2048MB:90ms/100ms"
+     ["*email*"]="2048MB:50ms/100ms"
+     ["*webmail*"]="2048MB:50ms/100ms"
      ["*bot*"]="2048MB:50ms/100ms"
      ["*meeting*"]="1024MB:50ms/100ms"
      ["*alm*"]="512MB:50ms/100ms"

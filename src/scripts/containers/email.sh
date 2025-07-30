@@ -42,7 +42,7 @@ echo "nameserver $PARAM_DNS_INTERNAL_IP" > /etc/resolv.conf
 
 apt install resolvconf -y
 apt-get update && apt-get install -y wget libcap2-bin
-wget -O /tmp/stalwart.tar.gz https://github.com/stalwartlabs/stalwart/releases/download/v0.12.4/stalwart-x86_64-unknown-linux-gnu.tar.gz
+wget -O /tmp/stalwart.tar.gz https://github.com/stalwartlabs/stalwart/releases/download/v0.13.1/stalwart-x86_64-unknown-linux-gnu.tar.gz
 
 tar -xzf /tmp/stalwart.tar.gz -C /tmp
 mkdir -p /opt/gbo/bin

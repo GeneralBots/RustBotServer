@@ -43,3 +43,4 @@ tracing-subscriber = { version = "0.3", features = ["fmt"] }
 scraper = "0.18"
 urlencoding = "2.1"
 regex = "1.10"
+zip = "4.3.0"

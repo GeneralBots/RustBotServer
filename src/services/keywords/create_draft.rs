@@ -35,7 +35,7 @@ async fn execute_create_draft(
     subject: &str,
     reply_text: &str,
 ) -> Result<String, String> {
-    let get_result = fetch_latest_email_from_sender(&state.config.clone().unwrap().email, to.clone()).await;
+    let get_result = fetch_latest_email_from_sender(&state.config.clone().unwrap().email, to).await;
     let email_body = if let Ok(get_result_str) = get_result {
         if !get_result_str.is_empty() {
             get_result_str + reply_text

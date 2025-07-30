@@ -5,6 +5,7 @@ use crate::services::keywords::find::{find_keyword};
 use crate::services::keywords::for_next::for_keyword;
 use crate::services::keywords::get::get_keyword;
 use crate::services::keywords::get_website::get_website_keyword;
+use crate::services::keywords::llm_keyword::llm_keyword;
 use crate::services::keywords::print::print_keyword;
 use crate::services::keywords::set::set_keyword;
 use crate::services::keywords::wait::wait_keyword;
@@ -26,6 +27,7 @@ impl ScriptService {
         create_site_keyword(state, &mut engine);
         find_keyword(state, &mut engine);
         for_keyword(state, &mut engine);     
+        llm_keyword(state, &mut engine);
         get_keyword(state, &mut engine);
         get_website_keyword(state, &mut engine);
         set_keyword(state, &mut engine);

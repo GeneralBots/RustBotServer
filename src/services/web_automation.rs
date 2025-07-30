@@ -1,6 +1,9 @@
+use crate::services::utils;
+use log::debug;
+use std::env;
+use std::env::temp_dir;
 use std::error::Error;
 use std::future::Future;
-use std::path::Path;
 use std::pin::Pin;
 use std::process::Command;
 use std::sync::Arc;
@@ -47,10 +50,9 @@ impl BrowserPool {
         caps.add_chrome_arg("--no-sandbox")?;
 
         let driver = WebDriver::new(&self.webdriver_url, caps).await?;
-        
+
         // Execute user function
         let result = f(driver).await;
-
 
         result
     }
@@ -91,11 +93,8 @@ impl BrowserSetup {
     }
 
     async fn setup_chromedriver() -> Result<String, Box<dyn std::error::Error>> {
-        let chromedriver_path = String::from(if cfg!(target_os = "windows") {
-            "chromedriver.exe"
-        } else {
-            "chromedriver"
-        });
+        let mut chromedriver_path = env::current_exe()?.parent().unwrap().to_path_buf();
+        chromedriver_path.push("chromedriver");
 
         // Check if chromedriver exists
         if fs::metadata(&chromedriver_path).await.is_err() {
@@ -119,13 +118,25 @@ impl BrowserSetup {
                     _ => return Err("Unsupported platform".into()),
                 };
 
-            let _download_url = format!("{}/chromedriver_{}.zip", base_url, platform);
-           
-            let zip_path = Path::new("chromedriver.zip");
+            let download_url = format!("{}/chromedriver_{}.zip", base_url, platform);
 
+            let mut zip_path = temp_dir();
+            zip_path.push("chromedriver.zip");
 
+            utils::download_file(&download_url, &zip_path.to_str().unwrap()).await?;
+
+            let extract_result = utils::extract_zip_recursive(&zip_path, &chromedriver_path);
+            if let Err(e) = extract_result {
+                debug!("Error extracting ZIP: {}", e);
+            }
             // Clean up zip file
             let _ = fs::remove_file(&zip_path).await;
+
+            if cfg!(target_os = "windows") {
+            chromedriver_path.push("chromedriver.exe");
+        } else {
+            chromedriver_path.push("chromedriver");
+        }
 
             #[cfg(unix)]
             {
@@ -136,7 +147,7 @@ impl BrowserSetup {
             }
         }
 
-        Ok(chromedriver_path)
+        Ok(chromedriver_path.to_string_lossy().to_string())
     }
 }
 
@@ -165,7 +176,6 @@ async fn is_process_running(name: &str) -> bool {
     if cfg!(target_os = "windows") {
         Command::new("tasklist")
             .output()
-            
             .map(|o| String::from_utf8_lossy(&o.stdout).contains(name))
             .unwrap_or(false)
     } else {

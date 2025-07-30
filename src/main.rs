@@ -13,7 +13,7 @@ use services::script::*;
 use services::state::*;
 use sqlx::PgPool;
 
-use crate::services::web_automation::BrowserPool;
+use crate::services::web_automation::{initialize_browser_pool, BrowserPool};
 //use services:: find::*;
 mod services;
 
@@ -38,6 +38,10 @@ async fn main() -> std::io::Result<()> {
         5,
         "/usr/bin/brave-browser-beta".to_string(),
     ));
+    initialize_browser_pool()
+        .await
+        .expect("Failed to initialize browser pool");
+    
     let app_state = web::Data::new(AppState {
         db: db.into(),
         db_custom: db_custom.into(),
