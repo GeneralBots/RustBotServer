@@ -19,7 +19,7 @@ pub fn create_site_keyword(_state: &AppState, engine: &mut Engine) {
                 }
 
                 let _name = context.eval_expression_tree(&inputs[0])?;
-                let company = context.eval_expression_tree(&inputs[1])?;
+                
                 let _website = context.eval_expression_tree(&inputs[2])?;
                 let _template = context.eval_expression_tree(&inputs[3])?;
                 let prompt = context.eval_expression_tree(&inputs[4])?;
@@ -29,7 +29,7 @@ pub fn create_site_keyword(_state: &AppState, engine: &mut Engine) {
                 
                 // Create the directory structure
                 let base_path = "/opt/gbo/tenants/pragmatismo/proxy/data/websites/sites.pragmatismo.com.br";
-                let site_name = format!("{}bot", company.to_string());
+                let site_name = format!("{}", _name.to_string());
                 let full_path = format!("{}/{}", base_path, site_name);
                 
                 // Create directory if it doesn't exist

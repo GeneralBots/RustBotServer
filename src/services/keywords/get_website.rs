@@ -11,22 +11,21 @@ pub fn get_website_keyword(state: &AppState, engine: &mut Engine) {
 
     engine
         .register_custom_syntax(
-            &["GET", "WEBSITE", "$expr$", "$expr$"],
+            &["WEBSITE", "OF", "$expr$"],
             false,
             move |context, inputs| {
                 let search_term = context.eval_expression_tree(&inputs[0])?.to_string();
-                let website_hint = context.eval_expression_tree(&inputs[1])?.to_string();
+                
 
                 println!(
-                    "GET WEBSITE executed - Search: '{}', Hint: '{}'",
-                    search_term, website_hint
+                    "GET WEBSITE executed - Search: '{}'",
+                    search_term
                 );
 
                 let browser_pool_clone = browser_pool.clone();
                 let fut = execute_headless_browser_search(
                     browser_pool_clone,
-                    &search_term,
-                    &website_hint,
+                    &search_term
                 );
 
                 let result =
@@ -41,20 +40,18 @@ pub fn get_website_keyword(state: &AppState, engine: &mut Engine) {
 
 pub async fn execute_headless_browser_search(
     browser_pool: Arc<BrowserPool>, // Adjust path as needed
-    search_term: &str,
-    website_hint: &str,
-) -> Result<String, Box<dyn Error + Send + Sync>> {
+    search_term: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
     println!(
-        "Starting headless browser search: '{}' targeting '{}'",
-        search_term, website_hint
+        "Starting headless browser search: '{}' ",
+        search_term
     );
 
     let search_term = search_term.to_string();
-    let website_hint = website_hint.to_string();
+    
 
     let result = browser_pool
         .with_browser(|driver| {
-            Box::pin(async move { perform_search(driver, &search_term, &website_hint).await })
+            Box::pin(async move { perform_search(driver, &search_term).await })
         })
         .await?;
 
@@ -63,15 +60,9 @@ pub async fn execute_headless_browser_search(
 
 async fn perform_search(
     driver: WebDriver,
-    search_term: &str,
-    website_hint: &str,
-) -> Result<String, Box<dyn Error + Send + Sync>> {
+    search_term: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
     // Configure the search query
-    let query = if website_hint.trim().is_empty() {
-        search_term.to_string()
-    } else {
-        format!("{} site:{}", search_term, website_hint)
-    };
+    let query = search_term.to_string();
 
     // Navigate to DuckDuckGo
     println!("Navigating to DuckDuckGo...");

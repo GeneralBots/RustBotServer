@@ -9,7 +9,7 @@ pub fn create_draft_keyword(state: &AppState, engine: &mut Engine) {
 
     engine
         .register_custom_syntax(
-            &["CREATE", "DRAFT", "$expr$", ",", "$expr$", ",", "$expr$"],
+            &["CREATE_DRAFT", "$expr$", ",", "$expr$", ",", "$expr$"],
             true, // Statement
             move |context, inputs| {
                 // Extract arguments

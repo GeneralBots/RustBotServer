@@ -28,8 +28,8 @@ impl ScriptService {
         find_keyword(state, &mut engine);
         for_keyword(state, &mut engine);     
         llm_keyword(state, &mut engine);
-        get_keyword(state, &mut engine);
         get_website_keyword(state, &mut engine);
+        get_keyword(state, &mut engine);
         set_keyword(state, &mut engine);
         wait_keyword(state, &mut engine);
         print_keyword(state, &mut engine);
@@ -127,6 +127,7 @@ impl ScriptService {
     /// Preprocesses BASIC-style script to handle semicolon-free syntax
     pub fn compile(&self, script: &str) -> Result<rhai::AST, Box<EvalAltResult>> {
         let processed_script = self.preprocess_basic_script(script);
+        println!("Processed Script:\n{}", processed_script);
         match self.engine.compile(&processed_script) {
             Ok(ast) => Ok(ast),
             Err(parse_error) => Err(Box::new(EvalAltResult::from(parse_error))),

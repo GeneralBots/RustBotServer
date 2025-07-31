@@ -1,7 +1,9 @@
+// wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+// sudo dpkg -i google-chrome-stable_current_amd64.deb
+
 use crate::services::utils;
-use log::debug;
+
 use std::env;
-use std::env::temp_dir;
 use std::error::Error;
 use std::future::Future;
 use std::pin::Pin;
@@ -91,64 +93,114 @@ impl BrowserSetup {
 
         Err("Brave browser not found. Please install Brave first.".into())
     }
-
-    async fn setup_chromedriver() -> Result<String, Box<dyn std::error::Error>> {
-        let mut chromedriver_path = env::current_exe()?.parent().unwrap().to_path_buf();
-        chromedriver_path.push("chromedriver");
-
-        // Check if chromedriver exists
-        if fs::metadata(&chromedriver_path).await.is_err() {
-            println!("Downloading chromedriver...");
-
-            // Note: This URL structure is outdated. Consider using Chrome for Testing endpoints
-            let (base_url, platform) =
-                match (cfg!(target_os = "windows"), cfg!(target_arch = "x86_64")) {
-                    (true, true) => (
-                        "https://chromedriver.storage.googleapis.com/114.0.5735.90",
-                        "win32",
-                    ),
-                    (false, true) if cfg!(target_os = "macos") => (
-                        "https://chromedriver.storage.googleapis.com/114.0.5735.90",
-                        "mac64",
-                    ),
-                    (false, true) => (
-                        "https://chromedriver.storage.googleapis.com/114.0.5735.90",
-                        "linux64",
-                    ),
-                    _ => return Err("Unsupported platform".into()),
-                };
-
-            let download_url = format!("{}/chromedriver_{}.zip", base_url, platform);
-
-            let mut zip_path = temp_dir();
-            zip_path.push("chromedriver.zip");
-
-            utils::download_file(&download_url, &zip_path.to_str().unwrap()).await?;
-
-            let extract_result = utils::extract_zip_recursive(&zip_path, &chromedriver_path);
-            if let Err(e) = extract_result {
-                debug!("Error extracting ZIP: {}", e);
-            }
-            // Clean up zip file
-            let _ = fs::remove_file(&zip_path).await;
-
-            if cfg!(target_os = "windows") {
-            chromedriver_path.push("chromedriver.exe");
-        } else {
-            chromedriver_path.push("chromedriver");
-        }
-
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                let mut perms = fs::metadata(&chromedriver_path).await?.permissions();
-                perms.set_mode(0o755); // Make executable
-                fs::set_permissions(&chromedriver_path, perms).await?;
-            }
-        }
-
-        Ok(chromedriver_path.to_string_lossy().to_string())
+async fn setup_chromedriver() -> Result<String, Box<dyn std::error::Error>> {
+    // Create chromedriver directory in executable's parent directory
+    let mut chromedriver_dir = env::current_exe()?
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    chromedriver_dir.push("chromedriver");
+    
+    // Ensure the directory exists
+    if !chromedriver_dir.exists() {
+        fs::create_dir(&chromedriver_dir).await?;
     }
+
+    // Determine the final chromedriver path
+    let chromedriver_path = if cfg!(target_os = "windows") {
+        chromedriver_dir.join("chromedriver.exe")
+    } else {
+        chromedriver_dir.join("chromedriver")
+    };
+
+    // Check if chromedriver exists
+    if fs::metadata(&chromedriver_path).await.is_err() {
+        let (download_url, platform) = match (cfg!(target_os = "windows"), cfg!(target_arch = "x86_64")) {
+            (true, true) => (
+                "https://storage.googleapis.com/chrome-for-testing-public/138.0.7204.183/win64/chromedriver-win64.zip",
+                "win64",
+            ),
+            (true, false) => (
+                "https://storage.googleapis.com/chrome-for-testing-public/138.0.7204.183/win32/chromedriver-win32.zip",
+                "win32",
+            ),
+            (false, true) if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") => (
+                "https://storage.googleapis.com/chrome-for-testing-public/138.0.7204.183/mac-arm64/chromedriver-mac-arm64.zip",
+                "mac-arm64",
+            ),
+            (false, true) if cfg!(target_os = "macos") => (
+                "https://storage.googleapis.com/chrome-for-testing-public/138.0.7204.183/mac-x64/chromedriver-mac-x64.zip",
+                "mac-x64",
+            ),
+            (false, true) => (
+                "https://storage.googleapis.com/chrome-for-testing-public/138.0.7204.183/linux64/chromedriver-linux64.zip",
+                "linux64",
+            ),
+            _ => return Err("Unsupported platform".into()),
+        };
+        
+        let mut zip_path = std::env::temp_dir();
+        zip_path.push("chromedriver.zip");
+        println!("Downloading chromedriver for {}...", platform);
+
+        // Download the zip file
+        utils::download_file(download_url, &zip_path.to_str().unwrap()).await?;
+
+        // Extract the zip to a temporary directory first
+        let mut temp_extract_dir = std::env::temp_dir();
+        temp_extract_dir.push("chromedriver_extract");
+        let mut temp_extract_dir1 = temp_extract_dir.clone();
+        
+        // Clean up any previous extraction
+        let _ = fs::remove_dir_all(&temp_extract_dir).await;
+        fs::create_dir(&temp_extract_dir).await?;
+
+        utils::extract_zip_recursive(&zip_path, &temp_extract_dir)?;
+
+        // Chrome for Testing zips contain a platform-specific directory
+        // Find the chromedriver binary in the extracted structure
+        let mut extracted_binary_path = temp_extract_dir;
+        extracted_binary_path.push(format!("chromedriver-{}", platform));
+        extracted_binary_path.push(if cfg!(target_os = "windows") {
+            "chromedriver.exe"
+        } else {
+            "chromedriver"
+        });
+
+        // Try to move the file, fall back to copy if cross-device
+        match fs::rename(&extracted_binary_path, &chromedriver_path).await {
+            Ok(_) => (),
+            Err(e) if e.kind() == std::io::ErrorKind::CrossesDevices => {
+                // Cross-device move failed, use copy instead
+                fs::copy(&extracted_binary_path, &chromedriver_path).await?;
+                // Set permissions on the copied file
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let mut perms = fs::metadata(&chromedriver_path).await?.permissions();
+                    perms.set_mode(0o755);
+                    fs::set_permissions(&chromedriver_path, perms).await?;
+                }
+            },
+            Err(e) => return Err(e.into()),
+        }
+
+        // Clean up
+        let _ = fs::remove_file(&zip_path).await;
+        let _ = fs::remove_dir_all(temp_extract_dir1).await;
+
+        // Set executable permissions (if not already set during copy)
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&chromedriver_path).await?.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&chromedriver_path, perms).await?;
+        }
+    }
+
+    Ok(chromedriver_path.to_string_lossy().to_string())
+}
 }
 
 // Modified BrowserPool initialization
