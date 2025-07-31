@@ -47,7 +47,7 @@ impl BrowserPool {
 
         let mut caps = DesiredCapabilities::chrome();
         caps.set_binary(&self.brave_path)?;
-        caps.add_chrome_arg("--headless=new")?;
+        //caps.add_chrome_arg("--headless=new")?;
         caps.add_chrome_arg("--disable-gpu")?;
         caps.add_chrome_arg("--no-sandbox")?;
 
@@ -149,7 +149,7 @@ async fn setup_chromedriver() -> Result<String, Box<dyn std::error::Error>> {
         // Extract the zip to a temporary directory first
         let mut temp_extract_dir = std::env::temp_dir();
         temp_extract_dir.push("chromedriver_extract");
-        let mut temp_extract_dir1 = temp_extract_dir.clone();
+        let temp_extract_dir1 = temp_extract_dir.clone();
         
         // Clean up any previous extraction
         let _ = fs::remove_dir_all(&temp_extract_dir).await;

@@ -57,35 +57,28 @@ pub async fn execute_headless_browser_search(
 
     Ok(result)
 }
-
 async fn perform_search(
     driver: WebDriver,
     search_term: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
-    // Configure the search query
-    let query = search_term.to_string();
-
     // Navigate to DuckDuckGo
-    println!("Navigating to DuckDuckGo...");
     driver.goto("https://duckduckgo.com").await?;
 
     // Wait for search box and type query
-    println!("Searching for: {}", query);
-    let search_input = driver.find(By::Name("q")).await?;
+    let search_input = driver.find(By::Id("searchbox_input")).await?;
     search_input.click().await?;
-    search_input.send_keys(&query).await?;
+    search_input.send_keys(search_term).await?;
 
     // Submit search by pressing Enter
     search_input.send_keys("\n").await?;
 
-    // Wait for results to load
-    driver.find(By::Css(".result")).await?;
-    sleep(Duration::from_millis(2000)).await; // Give extra time for JS
+    // Wait for results to load - using a modern result selector
+    driver.find(By::Css("[data-testid='result']")).await?;
+    sleep(Duration::from_millis(2000)).await;
 
-    // Extract first result link
+    // Extract results
     let results = extract_search_results(&driver).await?;
 
     if !results.is_empty() {
-        println!("Found {} results", results.len());
         Ok(results[0].clone())
     } else {
         Ok("No results found".to_string())
@@ -97,20 +90,42 @@ async fn extract_search_results(
 ) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
     let mut results = Vec::new();
 
-    // Try different selectors for search results
+    // Try different selectors for search results, ordered by most specific to most general
     let selectors = [
-        "a[data-testid='result-title-a']", // Modern DuckDuckGo
-        ".result__a",                      // Classic DuckDuckGo
-        "a.result-link",                   // Alternative
-        ".result a[href]",                 // Generic result links
+        // Modern DuckDuckGo (as seen in the HTML)
+        "a[data-testid='result-title-a']", // Primary result links
+        "a[data-testid='result-extras-url-link']", // URL links in results
+        "a.eVNpHGjtxRBq_gLOfGDr", // Class-based selector for result titles
+        "a.Rn_JXVtoPVAFyGkcaXyK", // Class-based selector for URL links
+        ".ikg2IXiCD14iVX7AdZo1 a", // Heading container links
+        ".OQ_6vPwNhCeusNiEDcGp a", // URL container links
+        // Fallback selectors
+        ".result__a", // Classic DuckDuckGo
+        "a.result-link", // Alternative
+        ".result a[href]", // Generic result links
     ];
 
     for selector in &selectors {
         if let Ok(elements) = driver.find_all(By::Css(selector)).await {
             for element in elements {
                 if let Ok(Some(href)) = element.attr("href").await {
-                    if href.starts_with("http") && !href.contains("duckduckgo.com") {
-                        results.push(href);
+                    // Filter out internal and non-http links
+                    if href.starts_with("http") 
+                        && !href.contains("duckduckgo.com")
+                        && !href.contains("duck.co")
+                        && !results.contains(&href) {
+                        
+                        // Get the display URL for verification
+                        let display_url = if let Ok(text) = element.text().await {
+                            text.trim().to_string()
+                        } else {
+                            String::new()
+                        };
+
+                        // Only add if it looks like a real result (not an ad or internal link)
+                        if !display_url.is_empty() && !display_url.contains("Ad") {
+                            results.push(href);
+                        }
                     }
                 }
             }
@@ -119,6 +134,9 @@ async fn extract_search_results(
             }
         }
     }
+
+    // Deduplicate results
+    results.dedup();
 
     Ok(results)
 }

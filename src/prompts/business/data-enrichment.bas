@@ -9,8 +9,8 @@ FOR EACH item IN items
     let page = GET website
 
     let prompt = "Create a website for " + item.company + " with the following details: " + page
-	
-    let alias = LLM "Return a single word for {item.company} like a token, no spaces, no special characters, no numbers, no uppercase letters." 
+
+    let alias = LLM "Return a single word for " + item.company + " like a token, no spaces, no special characters, no numbers, no uppercase letters."
 
     CREATE SITE item.company + "bot", item.company, website, "site", prompt 
 
