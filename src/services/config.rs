@@ -8,6 +8,7 @@ pub struct AppConfig {
     pub database_custom: DatabaseConfig,
     pub email: EmailConfig,
     pub ai: AIConfig,
+    pub site_path: String,
 }
 
 #[derive(Clone)]
@@ -141,6 +142,7 @@ impl AppConfig {
             database_custom,
             email,
             ai,
+            site_path: env::var("SITES_ROOT").unwrap()
         }
     }
 }

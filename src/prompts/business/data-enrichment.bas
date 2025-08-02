@@ -5,19 +5,21 @@ FOR EACH item IN items
     let website = WEBSITE OF item.company
     PRINT website
     
-    WAIT 10
+    
     let page = GET website
 
-    let prompt = "Create a website for " + item.company + " with the following details: " + page
+    let prompt = "Build the same simulator , but for " + item.company + " using just *content about the company* from its website, so it is possible to create a good and useful emulator in the same langue as the content: " + page
 
     let alias = LLM "Return a single word for " + item.company + " like a token, no spaces, no special characters, no numbers, no uppercase letters."
 
-    CREATE SITE item.company + "bot", item.company, website, "site", prompt 
+    
 
     let to = item.emailcto
-    let subject = "Simulador criado " + item.company
-    let body = "O simulador " + item.company + " foi criado com sucesso. Acesse o site: " + item.company + "bot"
+    let subject = "General Bots"    
+    let body = "Oi, tudo bem? Criamos o simulador " + alias + " especificamente para vocês!"      + "\n\n Acesse o site: https://sites.pragmatismo.com.br/" + alias      + "\n\n" + "Para acessar o simulador, clique no link acima ou copie e cole no seu navegador."     + "\n\n" + "Para iniciar, clique no ícone de Play."     + "\n\n" + "Atenciosamente,\nDário Vieira"
 
 	CREATE_DRAFT to, subject, body
 
+
+    
 NEXT item

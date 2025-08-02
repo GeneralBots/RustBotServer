@@ -6,7 +6,7 @@ pub fn llm_keyword(state: &AppState, engine: &mut Engine) {
     let ai_config = state.config.clone().unwrap().ai.clone();
 
     engine.register_custom_syntax(
-        &["LLM", "$string$"],  // Syntax: LLM "text to process"
+        &["LLM", "$expr$"],  // Syntax: LLM "text to process"
         false, // Expression, not statement
         move |context, inputs| {
             let text = context.eval_expression_tree(&inputs[0])?;
@@ -16,7 +16,8 @@ pub fn llm_keyword(state: &AppState, engine: &mut Engine) {
             
             // Use the same pattern as GET
 
-            let fut = call_llm(&text_str, &ai_config);
+            let fut = call_llm(
+                &text_str, &ai_config);
             let result = tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(fut)
             }).map_err(|e| format!("LLM call failed: {}", e))?;

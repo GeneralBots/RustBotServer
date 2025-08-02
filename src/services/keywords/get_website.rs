@@ -77,7 +77,8 @@ async fn perform_search(
 
     // Extract results
     let results = extract_search_results(&driver).await?;
-
+    driver.quit().await?;
+    
     if !results.is_empty() {
         Ok(results[0].clone())
     } else {

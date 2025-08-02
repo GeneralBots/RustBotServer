@@ -2,7 +2,6 @@ use rhai::Dynamic;
 use rhai::Engine;
 use serde_json::{json, Value};
 use sqlx::{PgPool};
-use std::error::Error;
 
 use crate::services::state::AppState;
 use crate::services::utils;
@@ -54,7 +53,7 @@ pub async fn execute_find(
         table_str, filter_str
     );
 
-    let (where_clause, params) = parse_filter(filter_str).map_err(|e| e.to_string())?;
+    let (where_clause, params) = utils::parse_filter(filter_str).map_err(|e| e.to_string())?;
 
     let query = format!(
         "SELECT * FROM {} WHERE {} LIMIT 10",
@@ -87,24 +86,3 @@ pub async fn execute_find(
     }))
 }
 
-// Helper function to parse the filter string into SQL WHERE clause and parameters
-fn parse_filter(filter_str: &str) -> Result<(String, Vec<String>), Box<dyn Error>> {
-    let parts: Vec<&str> = filter_str.split('=').collect();
-    if parts.len() != 2 {
-        return Err("Invalid filter format. Expected 'KEY=VALUE'".into());
-    }
-
-    let column = parts[0].trim();
-    let value = parts[1].trim();
-
-    // Validate column name to prevent SQL injection
-    if !column
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '_')
-    {
-        return Err("Invalid column name in filter".into());
-    }
-
-    // Return the parameterized query part and the value separately
-    Ok((format!("{} = $1", column), vec![value.to_string()]))
-}

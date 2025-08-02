@@ -2,7 +2,8 @@ use rhai::Dynamic;
 use rhai::Engine;
 use std::error::Error;
 use std::fs;
-use std::path::Path;
+use std::path::{ PathBuf};
+use std::io::Read;
 
 use crate::services::state::AppState;
 use crate::services::utils;
@@ -12,26 +13,25 @@ pub fn create_site_keyword(state: &AppState, engine: &mut Engine) {
     engine
         .register_custom_syntax(
             &[
-                "CREATE", "SITE", "$expr$", ",", "$expr$", ",", "$expr$", ",", "$expr$", ",",
-                "$expr$",
+                "CREATE_SITE", "$expr$", ",", "$expr$", ",", "$expr$",
+                
             ],
-            true, // Statement
+            true,
             move |context, inputs| {
-                if inputs.len() < 5 {
+                if inputs.len() < 3 {
                     return Err("Not enough arguments for CREATE SITE".into());
                 }
 
-                let _name = context.eval_expression_tree(&inputs[0])?;
-
-                let _website = context.eval_expression_tree(&inputs[2])?;
-                let _template = context.eval_expression_tree(&inputs[3])?;
-                let prompt = context.eval_expression_tree(&inputs[4])?;
-                let ai_config = state_clone.config.as_ref().expect("Config must be initialized").ai.clone();
-                // Use the same pattern as find_keyword
-                let fut = create_site(&ai_config, _name, prompt);
+                let alias = context.eval_expression_tree(&inputs[0])?;
+                let template_dir = context.eval_expression_tree(&inputs[1])?;
+                let prompt = context.eval_expression_tree(&inputs[2])?;
+                
+                let config = state_clone.config.as_ref().expect("Config must be initialized").clone();
+                
+                let fut = create_site(&config, alias, template_dir, prompt);
                 let result =
                     tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(fut))
-                        .map_err(|e| format!("HTTP request failed: {}", e))?;
+                        .map_err(|e| format!("Site creation failed: {}", e))?;
 
                 Ok(Dynamic::from(result))
             },
@@ -40,26 +40,51 @@ pub fn create_site_keyword(state: &AppState, engine: &mut Engine) {
 }
 
 async fn create_site(
-    ai_config: &crate::services::config::AIConfig,
-    _name: Dynamic,
+    config: &crate::services::config::AppConfig,
+    alias: Dynamic,
+    template_dir: Dynamic,
     prompt: Dynamic,
-)  -> Result<String, Box<dyn Error + Send + Sync>> {
+) -> Result<String, Box<dyn Error + Send + Sync>> {
+    // Convert paths to platform-specific format
+    let base_path = PathBuf::from(&config.site_path);
+    let template_path = base_path.join(template_dir.to_string());
+    let alias_path = base_path.join(alias.to_string());
 
-    // Call the LLM to generate the HTML contents
-    let llm_result = utils::call_llm(&prompt.to_string(), &ai_config).await?;
+    // Create destination directory
+    fs::create_dir_all(&alias_path).map_err(|e| e.to_string())?;
 
-    // Create the directory structure
-    let base_path = "/opt/gbo/tenants/pragmatismo/proxy/data/websites/sites.pragmatismo.com.br";
-    let site_name = format!("{}", _name.to_string());
-    let full_path = format!("{}/{}", base_path, site_name);
+    // Process all HTML files in template directory
+    let mut combined_content = String::new();
+    
+    for entry in fs::read_dir(&template_path).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        
+        if path.extension().map_or(false, |ext| ext == "html") {
+            let mut file = fs::File::open(&path).map_err(|e| e.to_string())?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).map_err(|e| e.to_string())?;
+            
+            combined_content.push_str(&contents);
+            combined_content.push_str("\n\n--- TEMPLATE SEPARATOR ---\n\n");
+        }
+    }
 
-    // Create directory if it doesn't exist
-    fs::create_dir_all(&full_path).map_err(|e| e.to_string())?;
+    // Combine template content with prompt
+    let full_prompt = format!(
+        "TEMPLATE FILES:\n{}\n\nPROMPT: {}\n\nGenerate a new HTML file cloning all previous TEMPLATE (keeping only the local _assets libraries use, no external resources), but turning this into this prompt:",
+        combined_content,
+        prompt.to_string()
+    );
 
-    // Write the HTML file
-    let index_path = Path::new(&full_path).join("index.html");
+    // Call LLM with the combined prompt
+    println!("Asking LLM to create site.");
+    let llm_result = utils::call_llm(&full_prompt, &config.ai).await?;
+
+    // Write the generated HTML file
+    let index_path = alias_path.join("index.html");
     fs::write(index_path, llm_result).map_err(|e| e.to_string())?;
 
-    println!("Site created at: {}", full_path);
-    Ok(full_path)
+    println!("Site created at: {}", alias_path.display());
+    Ok(alias_path.to_string_lossy().into_owned())
 }

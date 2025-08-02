@@ -2,6 +2,8 @@
 use reqwest;
 use crate::services::state::AppState;
 use std::error::Error;
+use scraper::{Html, Selector};
+
 
 pub fn get_keyword(_state: &AppState, engine: &mut Engine) {
     engine.register_custom_syntax(
@@ -29,7 +31,7 @@ pub fn get_keyword(_state: &AppState, engine: &mut Engine) {
     ).unwrap();
 }
 
-pub async fn execute_get(url: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
+pub async fn _execute_get(url: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
     println!("Starting execute_get with URL: {}", url);
     
     let response = reqwest::get(url).await?;
@@ -37,4 +39,28 @@ pub async fn execute_get(url: &str) -> Result<String, Box<dyn Error + Send + Syn
     
     println!("GET request successful, got {} bytes", content.len());
     Ok(format!("Secure content fetched: {}", content))
+}
+
+pub async fn execute_get(url: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
+    println!("Starting execute_get with URL: {}", url);
+    
+    let response = reqwest::get(url).await?;
+    let html_content = response.text().await?;
+    
+    // Parse HTML and extract text
+    let document = Html::parse_document(&html_content);
+    let selector = Selector::parse("body").unwrap(); // Focus on body content
+    let body = document.select(&selector).next().unwrap();
+    let text_content = body.text().collect::<Vec<_>>().join(" ");
+    
+    // Clean up the text (remove extra whitespace, newlines, etc.)
+    let cleaned_text = text_content
+        .replace('\n', " ")
+        .replace('\t', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    
+    println!("GET request successful, extracted {} characters of text", cleaned_text.len());
+    Ok(cleaned_text)
 }
