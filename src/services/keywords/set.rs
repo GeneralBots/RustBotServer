@@ -53,11 +53,13 @@ pub async fn execute_set(
         table_str, filter_str, updates_str
     );
 
-    // Parse the filter condition
-    let (where_clause, filter_params) = utils::parse_filter(filter_str).map_err(|e| e.to_string())?;
-    
-    // Parse the updates
+    // Parse the updates first to know how many parameters we'll have
     let (set_clause, update_params) = parse_updates(updates_str).map_err(|e| e.to_string())?;
+    let update_params_count = update_params.len();
+
+    // Parse the filter condition with an offset for parameter indices
+    let (where_clause, filter_params) = utils::parse_filter_with_offset(filter_str, update_params_count)
+        .map_err(|e| e.to_string())?;
 
     // Combine all parameters (updates first, then filter)
     let mut params = update_params;
@@ -69,11 +71,13 @@ pub async fn execute_set(
     );
     println!("Executing query: {}", query);
 
-    // Execute the update
-    let result = sqlx::query(&query)
-        .bind(&params[0]) // First update value
-        .bind(&params[1]) // Second update value if exists
-        .bind(&params[2]) // Filter value
+    // Execute the update with all parameters
+    let mut query_builder = sqlx::query(&query);
+    for param in &params {
+        query_builder = query_builder.bind(param);
+    }
+
+    let result = query_builder
         .execute(pool)
         .await
         .map_err(|e| {
@@ -98,7 +102,7 @@ fn parse_updates(updates_str: &str) -> Result<(String, Vec<String>), Box<dyn Err
     let mut params = Vec::new();
     
     // Split multiple updates by comma
-    for update in updates_str.split(',') {
+    for (i, update) in updates_str.split(',').enumerate() {
         let parts: Vec<&str> = update.split('=').collect();
         if parts.len() != 2 {
             return Err("Invalid update format. Expected 'KEY=VALUE'".into());
@@ -112,7 +116,7 @@ fn parse_updates(updates_str: &str) -> Result<(String, Vec<String>), Box<dyn Err
             return Err("Invalid column name in update".into());
         }
 
-        set_clauses.push(format!("{} = ${}", column, set_clauses.len() + 1));
+        set_clauses.push(format!("{} = ${}", column, i + 1));
         params.push(value.to_string());
     }
 

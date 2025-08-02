@@ -9,6 +9,7 @@ use crate::services::keywords::llm_keyword::llm_keyword;
 use crate::services::keywords::print::print_keyword;
 use crate::services::keywords::set::set_keyword;
 use crate::services::keywords::wait::wait_keyword;
+use crate::services::keywords::first::first_keyword;
 use crate::services::state::AppState;
 
 pub struct ScriptService {
@@ -26,7 +27,8 @@ impl ScriptService {
         create_draft_keyword(state, &mut engine);
         create_site_keyword(state, &mut engine);
         find_keyword(state, &mut engine);
-        for_keyword(state, &mut engine);     
+        for_keyword(state, &mut engine);   
+        first_keyword(&mut engine);     
         llm_keyword(state, &mut engine);
         get_website_keyword(state, &mut engine);
         get_keyword(state, &mut engine);
