@@ -1,12 +1,11 @@
 use rhai::Dynamic;
 use rhai::Engine;
 use serde_json::{json, Value};
-use sqlx::{PgPool};
+use sqlx::{PgPool, Row};
 use std::error::Error;
 
 use crate::services::state::AppState;
 use crate::services::utils;
-
 
 pub fn set_keyword(state: &AppState, engine: &mut Engine) {
     let db = state.db_custom.clone();
@@ -53,17 +52,13 @@ pub async fn execute_set(
         table_str, filter_str, updates_str
     );
 
-    // Parse the updates first to know how many parameters we'll have
-    let (set_clause, update_params) = parse_updates(updates_str).map_err(|e| e.to_string())?;
-    let update_params_count = update_params.len();
+    // Parse updates with proper type handling
+    let (set_clause, update_values) = parse_updates(updates_str).map_err(|e| e.to_string())?;
+    let update_params_count = update_values.len();
 
-    // Parse the filter condition with an offset for parameter indices
-    let (where_clause, filter_params) = utils::parse_filter_with_offset(filter_str, update_params_count)
+    // Parse filter with proper type handling
+    let (where_clause, filter_values) = utils::parse_filter_with_offset(filter_str, update_params_count)
         .map_err(|e| e.to_string())?;
-
-    // Combine all parameters (updates first, then filter)
-    let mut params = update_params;
-    params.extend(filter_params);
 
     let query = format!(
         "UPDATE {} SET {} WHERE {}",
@@ -71,21 +66,26 @@ pub async fn execute_set(
     );
     println!("Executing query: {}", query);
 
-    // Execute the update with all parameters
-    let mut query_builder = sqlx::query(&query);
-    for param in &params {
-        query_builder = query_builder.bind(param);
+    // Build query with proper parameter binding
+    let mut query = sqlx::query(&query);
+    
+    // Bind update values
+    for value in update_values {
+        query = bind_value(query, value);
+    }
+    
+    // Bind filter values
+    for value in filter_values {
+        query = bind_value(query, value);
     }
 
-    let result = query_builder
+    let result = query
         .execute(pool)
         .await
         .map_err(|e| {
             eprintln!("SQL execution error: {}", e);
             e.to_string()
         })?;
-
-    println!("Update successful, affected {} rows", result.rows_affected());
 
     Ok(json!({
         "command": "set",
@@ -96,28 +96,40 @@ pub async fn execute_set(
     }))
 }
 
-// Helper function to parse the updates string into SQL SET clause and parameters
+fn bind_value<'q>(query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>, value: String) -> sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments> {
+    if let Ok(int_val) = value.parse::<i64>() {
+        query.bind(int_val)
+    } else if let Ok(float_val) = value.parse::<f64>() {
+        query.bind(float_val)
+    } else if value.eq_ignore_ascii_case("true") {
+        query.bind(true)
+    } else if value.eq_ignore_ascii_case("false") {
+        query.bind(false)
+    } else {
+        query.bind(value)
+    }
+}
+
+// Parse updates without adding quotes
 fn parse_updates(updates_str: &str) -> Result<(String, Vec<String>), Box<dyn Error>> {
     let mut set_clauses = Vec::new();
     let mut params = Vec::new();
     
-    // Split multiple updates by comma
     for (i, update) in updates_str.split(',').enumerate() {
         let parts: Vec<&str> = update.split('=').collect();
         if parts.len() != 2 {
-            return Err("Invalid update format. Expected 'KEY=VALUE'".into());
+            return Err("Invalid update format".into());
         }
 
         let column = parts[0].trim();
         let value = parts[1].trim();
 
-        // Validate column name to prevent SQL injection
         if !column.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
-            return Err("Invalid column name in update".into());
+            return Err("Invalid column name".into());
         }
 
         set_clauses.push(format!("{} = ${}", column, i + 1));
-        params.push(value.to_string());
+        params.push(value.to_string()); // Store raw value without quotes
     }
 
     Ok((set_clauses.join(", "), params))

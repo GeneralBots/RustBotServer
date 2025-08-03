@@ -11,7 +11,6 @@ FOR EACH item IN items
 
     let alias = LLM "Return a single word for " + item.company + " like a token, no spaces, no special characters, no numbers, no uppercase letters."
 
-    CREATE_SITE alias, "OpenSourceCars", prompt 
 
     let to = item.emailcto
     let subject = "Simulador " + alias     
@@ -19,6 +18,6 @@ FOR EACH item IN items
 
 	CREATE_DRAFT to, subject, body
 
-    
+    SET "gb.rob", "robid="+ item.robid, "ACTION=CLOSE"    
     
 NEXT item

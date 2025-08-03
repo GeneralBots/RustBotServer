@@ -239,20 +239,27 @@ pub fn parse_filter(filter_str: &str) -> Result<(String, Vec<String>), Box<dyn E
     Ok((format!("{} = $1", column), vec![value.to_string()]))
 }
 
+// Parse filter without adding quotes
 pub fn parse_filter_with_offset(filter_str: &str, offset: usize) -> Result<(String, Vec<String>), Box<dyn Error>> {
-    let parts: Vec<&str> = filter_str.split('=').collect();
-    if parts.len() != 2 {
-        return Err("Invalid filter format. Expected 'KEY=VALUE'".into());
+    let mut clauses = Vec::new();
+    let mut params = Vec::new();
+    
+    for (i, condition) in filter_str.split('&').enumerate() {
+        let parts: Vec<&str> = condition.split('=').collect();
+        if parts.len() != 2 {
+            return Err("Invalid filter format".into());
+        }
+
+        let column = parts[0].trim();
+        let value = parts[1].trim();
+
+        if !column.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            return Err("Invalid column name".into());
+        }
+
+        clauses.push(format!("{} = ${}", column, i + 1 + offset));
+        params.push(value.to_string()); // Store raw value without quotes
     }
 
-    let column = parts[0].trim();
-    let value = parts[1].trim();
-
-    // Validate column name to prevent SQL injection
-    if !column.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
-        return Err("Invalid column name in filter".into());
-    }
-
-    // Use the offset + 1 for the parameter number
-    Ok((format!("{} = ${}", column, offset + 1), vec![value.to_string()]))
+    Ok((clauses.join(" AND "), params))
 }
