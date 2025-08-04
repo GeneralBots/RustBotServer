@@ -38,9 +38,11 @@ async fn execute_create_draft(
     let get_result = fetch_latest_sent_to(&state.config.clone().unwrap().email, to).await;
     let email_body = if let Ok(get_result_str) = get_result {
         if !get_result_str.is_empty() {
-            reply_text.to_string() + get_result_str.as_str()
+            let email_separator = "\n\n-------------------------------------------------\n\n";  // Horizontal rule style separator
+            reply_text.to_string() + email_separator + get_result_str.as_str()
         } else {
-            "".to_string()
+            // Fixed: Use reply_text when get_result_str is empty, not empty string
+            reply_text.to_string()
         }
     } else {
         reply_text.to_string()

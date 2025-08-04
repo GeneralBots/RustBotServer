@@ -1,7 +1,7 @@
 use rhai::Dynamic;
 use rhai::Engine;
 use serde_json::{json, Value};
-use sqlx::{PgPool, Row};
+use sqlx::{PgPool};
 use std::error::Error;
 
 use crate::services::state::AppState;

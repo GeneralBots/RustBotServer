@@ -5,9 +5,8 @@ use actix_web::{web, HttpResponse, Result};
 use lettre::{transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
 use serde::Serialize;
 
-use mailparse::{parse_mail, MailHeaderMap};  // Added MailHeaderMap import
-use imap::types::{Seq};
-
+use imap::types::Seq;
+use mailparse::{parse_mail, MailHeaderMap}; // Added MailHeaderMap import
 
 #[derive(Debug, Serialize)]
 pub struct EmailResponse {
@@ -79,8 +78,8 @@ pub async fn list_emails(
     let mut email_list = Vec::new();
 
     // Get last 20 messages
-    let recent_messages: Vec<_> = messages.iter().cloned().collect();  // Collect items into a Vec
-    let recent_messages: Vec<Seq> = recent_messages.into_iter().rev().take(20).collect();  // Now you can reverse and take the last 20
+    let recent_messages: Vec<_> = messages.iter().cloned().collect(); // Collect items into a Vec
+    let recent_messages: Vec<Seq> = recent_messages.into_iter().rev().take(20).collect(); // Now you can reverse and take the last 20
     for seq in recent_messages {
         // Fetch the entire message (headers + body)
         let fetch_result = session.fetch(seq.to_string(), "RFC822");
@@ -103,7 +102,11 @@ pub async fn list_emails(
             let date = headers.get_first_value("Date").unwrap_or_default();
 
             // Extract body text (handles both simple and multipart emails)
-            let body_text = if let Some(body_part) = parsed.subparts.iter().find(|p| p.ctype.mimetype == "text/plain") {
+            let body_text = if let Some(body_part) = parsed
+                .subparts
+                .iter()
+                .find(|p| p.ctype.mimetype == "text/plain")
+            {
                 body_part.get_body().unwrap_or_default()
             } else {
                 parsed.get_body().unwrap_or_default()
@@ -152,14 +155,13 @@ pub async fn list_emails(
 fn parse_from_field(from: &str) -> (String, String) {
     if let Some(start) = from.find('<') {
         if let Some(end) = from.find('>') {
-            let email = from[start+1..end].trim().to_string();
+            let email = from[start + 1..end].trim().to_string();
             let name = from[..start].trim().trim_matches('"').to_string();
             return (name, email);
         }
     }
     ("Unknown".to_string(), from.to_string())
 }
-
 
 #[derive(serde::Deserialize)]
 pub struct SaveDraftRequest {
@@ -208,10 +210,9 @@ pub async fn save_draft(
             success: false,
             message: format!("Failed to save draft: {}", e),
             draft_id: None,
-        }))
+        })),
     }
-} 
-
+}
 
 pub async fn save_email_draft(
     email_config: &EmailConfig,
@@ -226,7 +227,8 @@ pub async fn save_email_draft(
     )?;
 
     // Login
-    let mut session = client.login(&email_config.username, &email_config.password)
+    let mut session = client
+        .login(&email_config.username, &email_config.password)
         .map_err(|e| format!("Login failed: {:?}", e))?;
 
     // Select or create Drafts folder
@@ -237,7 +239,9 @@ pub async fn save_email_draft(
     }
 
     // Create email message
-    let cc_header = draft_data.cc.as_deref()
+    let cc_header = draft_data
+        .cc
+        .as_deref()
         .filter(|cc| !cc.is_empty())
         .map(|cc| format!("Cc: {}\r\n", cc))
         .unwrap_or_default();
@@ -254,10 +258,91 @@ pub async fn save_email_draft(
 
     // Append to Drafts folder
     session.append("Drafts", &email_message)?;
-    
+
     session.logout()?;
 
     Ok(chrono::Utc::now().timestamp().to_string())
+}
+
+pub async fn fetch_latest_email_from_sender(
+    email_config: &EmailConfig,
+    from_email: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Establish connection
+    let tls = native_tls::TlsConnector::builder().build()?;
+    let client = imap::connect(
+        (email_config.server.as_str(), 993),
+        email_config.server.as_str(),
+        &tls,
+    )?;
+
+    // Login
+    let mut session = client
+        .login(&email_config.username, &email_config.password)
+        .map_err(|e| format!("Login failed: {:?}", e))?;
+
+    // Try to select Archive folder first, then fall back to INBOX
+    if session.select("Archive").is_err() {
+        session.select("INBOX")?;
+    }
+
+    // Search for emails from the specified sender
+    let search_query = format!("FROM \"{}\"", from_email);
+    let messages = session.search(&search_query)?;
+
+    if messages.is_empty() {
+        session.logout()?;
+        return Err(format!("No emails found from {}", from_email).into());
+    }
+
+    // Get the latest message (highest sequence number)
+    let latest_seq = messages.iter().max().unwrap();
+
+    // Fetch the entire message
+    let messages = session.fetch(latest_seq.to_string(), "RFC822")?;
+
+    let mut email_text = String::new();
+
+    for msg in messages.iter() {
+        let body = msg.body().ok_or("No body found in email")?;
+
+        // Parse the complete email message
+        let parsed = parse_mail(body)?;
+
+        // Extract headers
+        let headers = parsed.get_headers();
+        let subject = headers.get_first_value("Subject").unwrap_or_default();
+        let from = headers.get_first_value("From").unwrap_or_default();
+        let date = headers.get_first_value("Date").unwrap_or_default();
+        let to = headers.get_first_value("To").unwrap_or_default();
+
+        // Extract body text
+        let body_text = if let Some(body_part) = parsed
+            .subparts
+            .iter()
+            .find(|p| p.ctype.mimetype == "text/plain")
+        {
+            body_part.get_body().unwrap_or_default()
+        } else {
+            parsed.get_body().unwrap_or_default()
+        };
+
+        // Format the email text ready for reply with headers
+        email_text = format!(
+            "--- Original Message ---\nFrom: {}\nTo: {}\nDate: {}\nSubject: {}\n\n{}\n\n--- Reply Above This Line ---\n\n",
+            from, to, date, subject, body_text
+        );
+
+        break; // We only want the first (and should be only) message
+    }
+
+    session.logout()?;
+
+    if email_text.is_empty() {
+        Err("Failed to extract email content".into())
+    } else {
+        Ok(email_text)
+    }
 }
 
 #[actix_web::post("/emails/get_latest_from")]
@@ -303,7 +388,8 @@ pub async fn fetch_latest_sent_to(
     )?;
 
     // Login
-    let mut session = client.login(&email_config.username, &email_config.password)
+    let mut session = client
+        .login(&email_config.username, &email_config.password)
         .map_err(|e| format!("Login failed: {:?}", e))?;
 
     // Try to select Archive folder first, then fall back to INBOX
@@ -341,108 +427,51 @@ pub async fn fetch_latest_sent_to(
         let date = headers.get_first_value("Date").unwrap_or_default();
         let to = headers.get_first_value("To").unwrap_or_default();
 
-        // Extract body text
-        let body_text = if let Some(body_part) = parsed.subparts.iter().find(|p| p.ctype.mimetype == "text/plain") {
+        if !to
+            .trim()
+            .to_lowercase()
+            .contains(&to_email.trim().to_lowercase())
+        {
+            continue;
+        }
+        // Extract body text (handles both simple and multipart emails) - SAME AS LIST_EMAILS
+        let body_text = if let Some(body_part) = parsed
+            .subparts
+            .iter()
+            .find(|p| p.ctype.mimetype == "text/plain")
+        {
             body_part.get_body().unwrap_or_default()
         } else {
             parsed.get_body().unwrap_or_default()
         };
 
-        // Format the email text ready for reply with headers
-        email_text = format!(
-            "--- Original Message ---\nFrom: {}\nTo: {}\nDate: {}\nSubject: {}\n\n{}\n\n--- Reply Above This Line ---\n\n",
-            from, to, date, subject, body_text
-        );
+        // Only format if we have actual content
+        if !body_text.trim().is_empty() && body_text != "No readable content found" {
+            // Format the email text ready for reply with headers
+            email_text = format!(
+                "--- Original Message ---\nFrom: {}\nTo: {}\nDate: {}\nSubject: {}\n\n{}\n\n--- Reply Above This Line ---\n\n",
+                from, to, date, subject, body_text.trim()
+            );
+        } else {
+            // Still provide headers even if body is empty
+            email_text = format!(
+                "--- Original Message ---\nFrom: {}\nTo: {}\nDate: {}\nSubject: {}\n\n[No readable content]\n\n--- Reply Above This Line ---\n\n",
+                from, to, date, subject
+            );
+        }
 
         break; // We only want the first (and should be only) message
     }
 
     session.logout()?;
 
+    // Always return something, even if it's just headers
     if email_text.is_empty() {
         Err("Failed to extract email content".into())
     } else {
         Ok(email_text)
     }
 }
-
-pub async fn fetch_latest_email_from_sender(
-    email_config: &EmailConfig,
-    from_email: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    // Establish connection
-    let tls = native_tls::TlsConnector::builder().build()?;
-    let client = imap::connect(
-        (email_config.server.as_str(), 993),
-        email_config.server.as_str(),
-        &tls,
-    )?;
-
-    // Login
-    let mut session = client.login(&email_config.username, &email_config.password)
-        .map_err(|e| format!("Login failed: {:?}", e))?;
-
-    // Try to select Archive folder first, then fall back to INBOX
-    if session.select("Archive").is_err() {
-        session.select("INBOX")?;
-    }
-
-    // Search for emails from the specified sender
-    let search_query = format!("FROM \"{}\"", from_email);
-    let messages = session.search(&search_query)?;
-
-    if messages.is_empty() {
-        session.logout()?;
-        return Err(format!("No emails found from {}", from_email).into());
-    }
-
-    // Get the latest message (highest sequence number)
-    let latest_seq = messages.iter().max().unwrap();
-
-    // Fetch the entire message
-    let messages = session.fetch(latest_seq.to_string(), "RFC822")?;
-
-    let mut email_text = String::new();
-
-    for msg in messages.iter() {
-        let body = msg.body().ok_or("No body found in email")?;
-
-        // Parse the complete email message
-        let parsed = parse_mail(body)?;
-
-        // Extract headers
-        let headers = parsed.get_headers();
-        let subject = headers.get_first_value("Subject").unwrap_or_default();
-        let from = headers.get_first_value("From").unwrap_or_default();
-        let date = headers.get_first_value("Date").unwrap_or_default();
-        let to = headers.get_first_value("To").unwrap_or_default();
-
-        // Extract body text
-        let body_text = if let Some(body_part) = parsed.subparts.iter().find(|p| p.ctype.mimetype == "text/plain") {
-            body_part.get_body().unwrap_or_default()
-        } else {
-            parsed.get_body().unwrap_or_default()
-        };
-
-        // Format the email text ready for reply with headers
-        email_text = format!(
-            "--- Original Message ---\nFrom: {}\nTo: {}\nDate: {}\nSubject: {}\n\n{}\n\n--- Reply Above This Line ---\n\n",
-            from, to, date, subject, body_text
-        );
-
-        break; // We only want the first (and should be only) message
-    }
-
-    session.logout()?;
-
-    if email_text.is_empty() {
-        Err("Failed to extract email content".into())
-    } else {
-        Ok(email_text)
-    }
-}
-
-
 
 #[actix_web::post("/emails/send")]
 pub async fn send_email(
