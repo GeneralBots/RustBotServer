@@ -3,6 +3,8 @@ pub mod email;
 pub mod file;
 pub mod keywords;
 pub mod llm;
+pub mod llm_local;
+pub mod llm_provider;
 pub mod script;
 pub mod state;
 pub mod utils;

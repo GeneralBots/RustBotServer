@@ -5,6 +5,7 @@ use actix_web::http::header;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 
+use reqwest::Client;
 use services::config::*;
 use services::email::*;
 use services::file::*;
@@ -13,12 +14,13 @@ use services::script::*;
 use services::state::*;
 use sqlx::PgPool;
 
+use crate::services::llm_local::ensure_llama_server_running;
+use crate::services::llm_provider::chat_completions;
 use crate::services::web_automation::{initialize_browser_pool, BrowserPool};
-//use services:: find::*;
+
 mod services;
 
 #[tokio::main(flavor = "multi_thread")]
-
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -38,10 +40,15 @@ async fn main() -> std::io::Result<()> {
         5,
         "/usr/bin/brave-browser-beta".to_string(),
     ));
+
+    // ensure_llama_server_running()
+    //     .await
+    //     .expect("Failed to initialize LLM local server.");
+
     initialize_browser_pool()
         .await
         .expect("Failed to initialize browser pool");
-    
+
     let app_state = web::Data::new(AppState {
         db: db.into(),
         db_custom: db_custom.into(),
@@ -70,9 +77,9 @@ async fn main() -> std::io::Result<()> {
             .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
             .allowed_header(header::CONTENT_TYPE)
             .max_age(3600);
+        //.wrap(cors)
 
         App::new()
-            .wrap(cors)
             .app_data(app_state.clone())
             .service(upload_file)
             .service(list_file)
@@ -81,6 +88,7 @@ async fn main() -> std::io::Result<()> {
             .service(list_emails)
             .service(send_email)
             .service(chat_stream)
+            .service(chat_completions)
             .service(chat)
     })
     .bind((config.server.host.clone(), config.server.port))?

@@ -13,17 +13,17 @@ use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use tokio::fs::File as TokioFile;
 use tokio_stream::StreamExt;
 use zip::ZipArchive;
-use tokio::fs::File as TokioFile;
 
 use reqwest::Client;
 use tokio::io::AsyncWriteExt;
 
 pub fn azure_from_config(config: &AIConfig) -> AzureConfig {
-    AzureConfig::default()
+    AzureConfig::new()
+    .with_api_base(&config.endpoint)
         .with_api_key(&config.key)
-        .with_api_base(&config.endpoint)
         .with_api_version(&config.version)
         .with_deployment_id(&config.instance)
 }
@@ -240,10 +240,13 @@ pub fn parse_filter(filter_str: &str) -> Result<(String, Vec<String>), Box<dyn E
 }
 
 // Parse filter without adding quotes
-pub fn parse_filter_with_offset(filter_str: &str, offset: usize) -> Result<(String, Vec<String>), Box<dyn Error>> {
+pub fn parse_filter_with_offset(
+    filter_str: &str,
+    offset: usize,
+) -> Result<(String, Vec<String>), Box<dyn Error>> {
     let mut clauses = Vec::new();
     let mut params = Vec::new();
-    
+
     for (i, condition) in filter_str.split('&').enumerate() {
         let parts: Vec<&str> = condition.split('=').collect();
         if parts.len() != 2 {
@@ -253,7 +256,10 @@ pub fn parse_filter_with_offset(filter_str: &str, offset: usize) -> Result<(Stri
         let column = parts[0].trim();
         let value = parts[1].trim();
 
-        if !column.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        if !column
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
             return Err("Invalid column name".into());
         }
 

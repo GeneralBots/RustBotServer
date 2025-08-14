@@ -13,8 +13,6 @@ sleep 15
 
 lxc exec "$PARAM_TENANT"-bot -- bash -c "
 
-echo "nameserver $PARAM_DNS_INTERNAL_IP" > /etc/resolv.conf
-
 
 apt-get update && apt-get install -y \
 build-essential cmake git pkg-config libjpeg-dev libtiff-dev \

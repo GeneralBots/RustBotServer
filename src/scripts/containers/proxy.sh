@@ -47,10 +47,10 @@ chown -R gbuser:gbuser /opt/gbo/{bin,data,conf,logs}
 systemctl enable proxy
 "
 
-for port in 80 443; do
-lxc config device remove "$PARAM_TENANT"-proxy "port-$port" 2>/dev/null || true
-lxc config device add "$PARAM_TENANT"-proxy "port-$port" proxy listen=tcp:0.0.0.0:$port connect=tcp:127.0.0.1:$port
-done
+    for port in 80 443; do
+    lxc config device remove "$PARAM_TENANT"-proxy "port-$port" 2>/dev/null || true
+    lxc config device add "$PARAM_TENANT"-proxy "port-$port" proxy listen=tcp:0.0.0.0:$port connect=tcp:127.0.0.1:$port
+    done
 
 lxc config set "$PARAM_TENANT"-proxy security.syscalls.intercept.mknod true
 lxc config set "$PARAM_TENANT"-proxy security.syscalls.intercept.setxattr true

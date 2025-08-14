@@ -1,11 +1,6 @@
 #!/bin/bash
 PUBLIC_INTERFACE="eth0"                 # Your host's public network interface
 
-# Enable IP forwarding
-echo "[HOST] Enabling IP forwarding..."
-echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-
 # Configure firewall
 echo "[HOST] Configuring firewall..."
 sudo iptables -A FORWARD -i $PUBLIC_INTERFACE -o lxcbr0 -p tcp -m multiport --dports 25,80,110,143,465,587,993,995,4190 -j ACCEPT
@@ -22,7 +17,7 @@ fi
 
 # Create directory structure
 echo "[CONTAINER] Creating directories..."
-HOST_BASE="/opt/gbo/tenants/$PARAM_TENANT/email"
+HOST_BASE="/opt/email"
 HOST_DATA="$HOST_BASE/data"
 HOST_CONF="$HOST_BASE/conf"
 HOST_LOGS="$HOST_BASE/logs"
@@ -66,9 +61,9 @@ sudo chown -R "$HOST_EMAIL_UID:$HOST_EMAIL_GID" "$HOST_BASE"
 
 # Mount directories
 echo "[CONTAINER] Mounting directories..."
-lxc config device add "$PARAM_TENANT"-email emaildata disk source="$HOST_DATA" path=/opt/gbo/data
-lxc config device add "$PARAM_TENANT"-email emailconf disk source="$HOST_CONF" path=/opt/gbo/conf
-lxc config device add "$PARAM_TENANT"-email emaillogs disk source="$HOST_LOGS" path=/opt/gbo/logs
+lxc config device add emailprofile emaildata disk source="$HOST_DATA" path=/opt/gbo/data
+lxc config device add emailprofile emailconf disk source="$HOST_CONF" path=/opt/gbo/conf
+lxc config device add emailprofile emaillogs disk source="$HOST_LOGS" path=/opt/gbo/logs
 
 # Create systemd service
 echo "[CONTAINER] Creating email service..."
@@ -96,3 +91,8 @@ systemctl daemon-reload
 systemctl enable email
 systemctl start email
 "
+
+for port in 25 80 110 143 465 587 993 995 4190; do
+    lxc config device remove email "port-$port" 2>/dev/null || true
+    lxc config device add email "port-$port" proxy listen=tcp:0.0.0.0:$port connect=tcp:127.0.0.1:$port
+done

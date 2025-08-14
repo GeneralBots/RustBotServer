@@ -11,7 +11,7 @@ repository = "https://alm.pragmatismo.com.br/generalbots/gbserver"
 actix-cors = "0.6"
 actix-multipart = "0.6"
 actix-web = "4"
-actix-ws="0.3.0"
+actix-ws = "0.3.0"
 thirtyfour = { version = "0.30" }
 downloader = "0.2.8"
 anyhow = "1.0"
@@ -24,7 +24,12 @@ futures = "0.3"
 futures-util = "0.3"
 imap = "2.0"
 langchain-rust = "4.4.3"
-lettre = { version = "0.10", features = ["smtp-transport", "builder", "tokio1", "tokio1-native-tls"] }
+lettre = { version = "0.10", features = [
+    "smtp-transport",
+    "builder",
+    "tokio1",
+    "tokio1-native-tls",
+] }
 log = "0.4"
 mailparse = "0.13"
 minio = { git = "https://github.com/minio/minio-rs", branch = "master" }
@@ -33,7 +38,7 @@ reqwest = { version = "0.11", features = ["json", "stream"] }
 rhai = "1.22.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-smartstring = "1.0"  # Use the latest version from crates.io
+smartstring = "1.0" # Use the latest version from crates.io
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres"] }
 tempfile = "3"
 tokio = { version = "1", features = ["full"] }
@@ -43,4 +48,5 @@ tracing-subscriber = { version = "0.3", features = ["fmt"] }
 scraper = "0.18"
 urlencoding = "2.1"
 regex = "1.10"
+uuid = { version = "1.0", features = ["v4"] }
 zip = "4.3.0"
