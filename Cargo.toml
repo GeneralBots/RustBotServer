@@ -7,6 +7,10 @@ description = "General Bots Server"
 license = "AGPL"
 repository = "https://alm.pragmatismo.com.br/generalbots/gbserver"
 
+[features]
+default = []
+local_llm = []
+
 [dependencies]
 actix-cors = "0.6"
 actix-multipart = "0.6"
@@ -39,7 +43,13 @@ rhai = "1.22.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 smartstring = "1.0" # Use the latest version from crates.io
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres"] }
+sqlx = { version = "0.7", features = [
+    "time",
+    "uuid",
+    "runtime-tokio-rustls",
+    "postgres",
+    "chrono",
+] }
 tempfile = "3"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1.17"
@@ -48,5 +58,5 @@ tracing-subscriber = { version = "0.3", features = ["fmt"] }
 scraper = "0.18"
 urlencoding = "2.1"
 regex = "1.10"
-uuid = { version = "1.0", features = ["v4"] }
+uuid = { version = "1.4", features = ["serde", "v4"] } # v4, v7, etc. as needed
 zip = "4.3.0"

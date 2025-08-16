@@ -1,3 +1,4 @@
+pub mod automation;
 pub mod config;
 pub mod email;
 pub mod file;

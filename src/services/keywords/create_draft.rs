@@ -1,5 +1,5 @@
+use crate::services::email::save_email_draft;
 use crate::services::email::{fetch_latest_sent_to, SaveDraftRequest};
-use crate::services::email::{save_email_draft};
 use crate::services::state::AppState;
 use rhai::Dynamic;
 use rhai::Engine;
@@ -38,7 +38,7 @@ async fn execute_create_draft(
     let get_result = fetch_latest_sent_to(&state.config.clone().unwrap().email, to).await;
     let email_body = if let Ok(get_result_str) = get_result {
         if !get_result_str.is_empty() {
-            let email_separator = "\n\n-------------------------------------------------\n\n";  // Horizontal rule style separator
+            let email_separator = "\n\n-------------------------------------------------\n\n"; // Horizontal rule style separator
             reply_text.to_string() + email_separator + get_result_str.as_str()
         } else {
             // Fixed: Use reply_text when get_result_str is empty, not empty string
@@ -56,9 +56,10 @@ async fn execute_create_draft(
         text: email_body,
     };
 
-    let save_result = match save_email_draft(&state.config.clone().unwrap().email, &draft_request).await {
-        Ok(_) => Ok("Draft saved successfully".to_string()),
-        Err(e) => Err(e.to_string()),
-    };
+    let save_result =
+        match save_email_draft(&state.config.clone().unwrap().email, &draft_request).await {
+            Ok(_) => Ok("Draft saved successfully".to_string()),
+            Err(e) => Err(e.to_string()),
+        };
     save_result
 }

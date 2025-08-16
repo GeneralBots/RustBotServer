@@ -1,16 +1,18 @@
-use rhai::{ Dynamic, Engine, EvalAltResult};
-use crate::services::keywords::create_draft::{create_draft_keyword};
+use crate::services::keywords::create_draft::create_draft_keyword;
 use crate::services::keywords::create_site::create_site_keyword;
-use crate::services::keywords::find::{find_keyword};
+use crate::services::keywords::find::find_keyword;
+use crate::services::keywords::first::first_keyword;
 use crate::services::keywords::for_next::for_keyword;
 use crate::services::keywords::get::get_keyword;
 use crate::services::keywords::get_website::get_website_keyword;
 use crate::services::keywords::llm_keyword::llm_keyword;
+use crate::services::keywords::on::on_keyword;
 use crate::services::keywords::print::print_keyword;
 use crate::services::keywords::set::set_keyword;
+use crate::services::keywords::set_schedule::set_schedule_keyword;
 use crate::services::keywords::wait::wait_keyword;
-use crate::services::keywords::first::first_keyword;
 use crate::services::state::AppState;
+use rhai::{Dynamic, Engine, EvalAltResult};
 
 pub struct ScriptService {
     engine: Engine,
@@ -19,22 +21,25 @@ pub struct ScriptService {
 impl ScriptService {
     pub fn new(state: &AppState) -> Self {
         let mut engine = Engine::new();
-       
+
         // Configure engine for BASIC-like syntax
         engine.set_allow_anonymous_fn(true);
         engine.set_allow_looping(true);
-        
+
         create_draft_keyword(state, &mut engine);
         create_site_keyword(state, &mut engine);
         find_keyword(state, &mut engine);
-        for_keyword(state, &mut engine);   
-        first_keyword(&mut engine);     
+        for_keyword(state, &mut engine);
+        first_keyword(&mut engine);
         llm_keyword(state, &mut engine);
         get_website_keyword(state, &mut engine);
         get_keyword(state, &mut engine);
         set_keyword(state, &mut engine);
         wait_keyword(state, &mut engine);
         print_keyword(state, &mut engine);
+        on_keyword(state, &mut engine);
+        set_schedule_keyword(state, &mut engine);
+
         ScriptService { engine }
     }
 

@@ -1,7 +1,7 @@
 use rhai::Dynamic;
 use rhai::Engine;
 use serde_json::{json, Value};
-use sqlx::{PgPool};
+use sqlx::PgPool;
 use std::error::Error;
 
 use crate::services::state::AppState;
@@ -57,8 +57,9 @@ pub async fn execute_set(
     let update_params_count = update_values.len();
 
     // Parse filter with proper type handling
-    let (where_clause, filter_values) = utils::parse_filter_with_offset(filter_str, update_params_count)
-        .map_err(|e| e.to_string())?;
+    let (where_clause, filter_values) =
+        utils::parse_filter_with_offset(filter_str, update_params_count)
+            .map_err(|e| e.to_string())?;
 
     let query = format!(
         "UPDATE {} SET {} WHERE {}",
@@ -68,24 +69,21 @@ pub async fn execute_set(
 
     // Build query with proper parameter binding
     let mut query = sqlx::query(&query);
-    
+
     // Bind update values
     for value in update_values {
         query = bind_value(query, value);
     }
-    
+
     // Bind filter values
     for value in filter_values {
         query = bind_value(query, value);
     }
 
-    let result = query
-        .execute(pool)
-        .await
-        .map_err(|e| {
-            eprintln!("SQL execution error: {}", e);
-            e.to_string()
-        })?;
+    let result = query.execute(pool).await.map_err(|e| {
+        eprintln!("SQL execution error: {}", e);
+        e.to_string()
+    })?;
 
     Ok(json!({
         "command": "set",
@@ -96,7 +94,10 @@ pub async fn execute_set(
     }))
 }
 
-fn bind_value<'q>(query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>, value: String) -> sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments> {
+fn bind_value<'q>(
+    query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>,
+    value: String,
+) -> sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments> {
     if let Ok(int_val) = value.parse::<i64>() {
         query.bind(int_val)
     } else if let Ok(float_val) = value.parse::<f64>() {
@@ -114,7 +115,7 @@ fn bind_value<'q>(query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::
 fn parse_updates(updates_str: &str) -> Result<(String, Vec<String>), Box<dyn Error>> {
     let mut set_clauses = Vec::new();
     let mut params = Vec::new();
-    
+
     for (i, update) in updates_str.split(',').enumerate() {
         let parts: Vec<&str> = update.split('=').collect();
         if parts.len() != 2 {
@@ -124,7 +125,10 @@ fn parse_updates(updates_str: &str) -> Result<(String, Vec<String>), Box<dyn Err
         let column = parts[0].trim();
         let value = parts[1].trim();
 
-        if !column.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        if !column
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
             return Err("Invalid column name".into());
         }
 

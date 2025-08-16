@@ -4,20 +4,17 @@ use actix_cors::Cors;
 use actix_web::http::header;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
-
-use reqwest::Client;
-use services::config::*;
-use services::email::*;
-use services::file::*;
-use services::llm::*;
-use services::script::*;
 use services::state::*;
+use services::{config::*, file::*};
 use sqlx::PgPool;
 
-use crate::services::llm_local::ensure_llama_server_running;
+use crate::services::automation::AutomationService;
+use crate::services::email::{get_emails, list_emails, save_click, send_email};
+use crate::services::llm::{chat, chat_stream};
 use crate::services::llm_provider::chat_completions;
 use crate::services::web_automation::{initialize_browser_pool, BrowserPool};
 
+mod models;
 mod services;
 
 #[tokio::main(flavor = "multi_thread")]
@@ -41,9 +38,14 @@ async fn main() -> std::io::Result<()> {
         "/usr/bin/brave-browser-beta".to_string(),
     ));
 
-    // ensure_llama_server_running()
-    //     .await
-    //     .expect("Failed to initialize LLM local server.");
+    #[cfg(feature = "local_llm")]
+    {
+        use crate::services::llm_local::ensure_llama_server_running;
+
+        ensure_llama_server_running()
+            .await
+            .expect("Failed to initialize LLM local server.");
+    }
 
     initialize_browser_pool()
         .await
@@ -57,17 +59,11 @@ async fn main() -> std::io::Result<()> {
         browser_pool: browser_pool.clone(),
     });
 
-    let script_service = ScriptService::new(&app_state.clone());
+    // Start automation service in background
+    let automation_state = app_state.get_ref().clone(); // This gets the Arc<AppState>
 
-    const TEXT: &str = include_str!("prompts/business/data-enrichment.bas");
-
-    match script_service.compile(TEXT) {
-        Ok(ast) => match script_service.run(&ast) {
-            Ok(result) => println!("Script executed successfully: {:?}", result),
-            Err(e) => eprintln!("Error executing script: {}", e),
-        },
-        Err(e) => eprintln!("Error compiling script: {}", e),
-    }
+    let automation = AutomationService::new(automation_state, "../../src/scripts");
+    let _automation_handle = automation.spawn();
 
     // Start HTTP server
     HttpServer::new(move || {
@@ -77,9 +73,9 @@ async fn main() -> std::io::Result<()> {
             .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
             .allowed_header(header::CONTENT_TYPE)
             .max_age(3600);
-        //.wrap(cors)
 
         App::new()
+            .wrap(cors)
             .app_data(app_state.clone())
             .service(upload_file)
             .service(list_file)
