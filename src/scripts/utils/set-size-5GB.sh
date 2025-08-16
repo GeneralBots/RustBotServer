@@ -1,8 +1,8 @@
-export container="pragmatismo-doc-editor"
-lxc stop "$container" 
+export container="pragmatismo-system"
+lxc stop "$container"
 
-lxc config device override "$container" root size=5GB
-lxc config device set "$container" root size=5GB
+lxc config device override "$container" root size=10GB
+lxc config device set "$container" root size=10GB
 lxc start "$container"
 ROOT_DEV=$(lxc exec "$container" -- df / --output=source | tail -1)
 

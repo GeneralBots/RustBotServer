@@ -237,37 +237,6 @@ fn messages_to_prompt(messages: &[ChatMessage]) -> String {
     prompt
 }
 
-// Cleanup function
-pub fn cleanup_processes() {
-    println!("🧹 Cleaning up llama.cpp processes...");
-
-    unsafe {
-        if let Some(process_handle) = &LLAMA_PROCESS {
-            if let Ok(mut process) = process_handle.lock() {
-                if let Some(ref mut child) = *process {
-                    println!("🔪 Killing llama server process...");
-                    let _ = child.start_kill();
-                }
-            }
-        }
-    }
-
-    // Kill any remaining llama processes
-    println!("🔍 Killing any remaining llama-server processes...");
-    let output = Command::new("pkill").arg("-f").arg("llama-server").output();
-
-    match output {
-        Ok(result) => {
-            if result.status.success() {
-                println!("✅ Successfully killed llama processes");
-            } else {
-                println!("ℹ️ No llama processes found to kill");
-            }
-        }
-        Err(e) => println!("⚠️ Error trying to kill processes: {}", e),
-    }
-}
-
 // Proxy endpoint
 #[post("/v1/chat/completions")]
 pub async fn chat_completions(

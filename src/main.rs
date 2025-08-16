@@ -62,7 +62,7 @@ async fn main() -> std::io::Result<()> {
     // Start automation service in background
     let automation_state = app_state.get_ref().clone(); // This gets the Arc<AppState>
 
-    let automation = AutomationService::new(automation_state, "../../src/scripts");
+    let automation = AutomationService::new(automation_state, "src/prompts");
     let _automation_handle = automation.spawn();
 
     // Start HTTP server

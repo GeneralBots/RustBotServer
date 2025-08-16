@@ -64,7 +64,7 @@ impl AutomationService {
     }
 
     async fn check_table_changes(&self, automations: &[Automation], since: DateTime<Utc>) {
-        if let Some(pool) = &self.state.db {
+        if let Some(pool) = &self.state.db_custom {
             for automation in automations {
                 if let Some(trigger_kind) = TriggerKind::from_i32(automation.kind) {
                     if matches!(

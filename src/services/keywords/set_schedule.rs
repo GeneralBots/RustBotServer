@@ -10,7 +10,7 @@ pub fn set_schedule_keyword(state: &AppState, engine: &mut Engine) {
     let db = state.db_custom.clone();
 
     engine
-        .register_custom_syntax(["SET", "SCHEDULE", "$string$"], true, {
+        .register_custom_syntax(["SET_SCHEDULE", "$string$"], true, {
             let db = db.clone();
 
             move |context, inputs| {
