@@ -1,7 +1,6 @@
+use actix_web::middleware::Logger;
 use std::sync::Arc;
 
-use actix_cors::Cors;
-use actix_web::http::header;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use services::state::*;
@@ -11,6 +10,7 @@ use sqlx::PgPool;
 use crate::services::automation::AutomationService;
 use crate::services::email::{get_emails, list_emails, save_click, send_email};
 use crate::services::llm::{chat, chat_stream};
+use crate::services::llm_local::chat_completions_local;
 use crate::services::llm_provider::chat_completions;
 use crate::services::web_automation::{initialize_browser_pool, BrowserPool};
 
@@ -38,7 +38,7 @@ async fn main() -> std::io::Result<()> {
         "/usr/bin/brave-browser-beta".to_string(),
     ));
 
-    #[cfg(feature = "local_llm")]
+    #[cfg(feature = "default")]
     {
         use crate::services::llm_local::ensure_llama_server_running;
 
@@ -67,15 +67,17 @@ async fn main() -> std::io::Result<()> {
 
     // Start HTTP server
     HttpServer::new(move || {
-        let cors = Cors::default()
-            .send_wildcard()
-            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
-            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-            .allowed_header(header::CONTENT_TYPE)
-            .max_age(3600);
+        // let cors = Cors::default()
+        //     .send_wildcard()
+        //     .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
+        //     .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+        //     .allowed_header(header::CONTENT_TYPE)
+        //     .max_age(3600);
+        //.wrap(cors)
 
         App::new()
-            .wrap(cors)
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %{User-Agent}i"))
             .app_data(app_state.clone())
             .service(upload_file)
             .service(list_file)
@@ -85,6 +87,7 @@ async fn main() -> std::io::Result<()> {
             .service(send_email)
             .service(chat_stream)
             .service(chat_completions)
+            .service(chat_completions_local)
             .service(chat)
     })
     .bind((config.server.host.clone(), config.server.port))?

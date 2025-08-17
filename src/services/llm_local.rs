@@ -93,7 +93,7 @@ async fn start_llama_server() -> Result<(), Box<dyn std::error::Error + Send + S
     // Get environment variables for llama.cpp configuration
     let llama_path = env::var("LLM_CPP_PATH").unwrap_or_else(|_| "llama-server".to_string());
     let model_path = env::var("LLM_MODEL_PATH")
-        .unwrap_or_else(|_| "./models/tinyllama-1.1b-q4_01.gguf".to_string());
+        .unwrap_or_else(|_| "./tinyllama-1.1b-chat-v1.0.Q4_0.gguf".to_string());
     let cpu_limit = env::var("CPU_LIMIT").unwrap_or_else(|_| "50".to_string());
     let port = env::var("LLM_PORT").unwrap_or_else(|_| "8080".to_string());
 
@@ -105,15 +105,15 @@ async fn start_llama_server() -> Result<(), Box<dyn std::error::Error + Send + S
 
     // Kill any existing llama processes
     println!("🧹 Cleaning up existing processes...");
-    let _ = Command::new("pkill").arg("-f").arg("llama-server").output();
+    let _ = Command::new("pkill").arg("-f").arg("llama-cli").output();
 
     // Wait a bit for cleanup
     sleep(Duration::from_secs(2)).await;
 
     // Build the command
     let full_command = format!(
-        "cpulimit -l {} -- {} -m '{}' --n-gpu-layers 18 --temp 0.7 --ctx-size 1024 --batch-size 256 --no-mmap --mlock --port {} --host 127.0.0.1 --tensor-split 1.0 --main-gpu 0",
-        cpu_limit, llama_path, model_path, port
+        "{}/llama-server -m {} --mlock --port {} --host 127.0.0.1",
+        llama_path, model_path, port
     );
 
     println!("📝 Executing command: {}", full_command);
@@ -238,12 +238,12 @@ fn messages_to_prompt(messages: &[ChatMessage]) -> String {
 }
 
 // Proxy endpoint
-#[post("/v1/chat/completions")]
-pub async fn chat_completions(
+#[post("/v1/chat/completions1")]
+pub async fn chat_completions_local(
     req_body: web::Json<ChatCompletionRequest>,
     _req: HttpRequest,
 ) -> Result<HttpResponse> {
-    dotenv().ok();
+    dotenv().ok().unwrap();
 
     // Ensure llama.cpp server is running
     if let Err(e) = ensure_llama_server_running().await {

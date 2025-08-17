@@ -27,16 +27,16 @@ CPU_PRIORITY=5
 
 for pattern in "${!container_limits[@]}"; do
     echo "Configuring $container..."
-    
+
     memory=$DEFAULT_MEMORY
     cpu_allowance=$DEFAULT_CPU_ALLOWANCE
-    
+
     # Configure all containers
     for container in $(lxc list -c n --format csv); do
     # Check if container matches any pattern
         if [[ $container == $pattern ]]; then
             IFS=':' read -r memory cpu_allowance <<< "${container_limits[$pattern]}"
-            
+
             # Apply configuration
             lxc config set "$container" limits.memory "$memory"
             lxc config set "$container" limits.cpu.allowance "$cpu_allowance"

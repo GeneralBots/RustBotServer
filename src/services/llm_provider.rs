@@ -1,5 +1,6 @@
 use actix_web::{post, web, HttpRequest, HttpResponse, Result};
 use dotenv::dotenv;
+use regex::Regex;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -33,12 +34,15 @@ struct Choice {
     finish_reason: String,
 }
 
-// Proxy endpoint
 #[post("/v1/chat/completions")]
-async fn chat_completions(
-    req_body: web::Json<ChatCompletionRequest>,
-    _req: HttpRequest,
-) -> Result<HttpResponse> {
+async fn chat_completions(body: web::Bytes, _req: HttpRequest) -> Result<HttpResponse> {
+    // Always log raw POST data
+    if let Ok(body_str) = std::str::from_utf8(&body) {
+        println!("POST Data: {}", body_str);
+    } else {
+        println!("POST Data (binary): {:?}", body);
+    }
+
     dotenv().ok();
 
     // Environment variables
@@ -67,12 +71,23 @@ async fn chat_completions(
         reqwest::header::HeaderValue::from_static("application/json"),
     );
 
+    let body_str = std::str::from_utf8(&body).unwrap_or("");
+    println!("Original POST Data: {}", body_str);
+
+    // Remove the problematic params
+    let re =
+        Regex::new(r#","?\s*"(max_completion_tokens|parallel_tool_calls)"\s*:\s*[^,}]*"#).unwrap();
+    let cleaned = re.replace_all(body_str, "");
+    let cleaned_body = web::Bytes::from(cleaned.to_string());
+
+    println!("Cleaned POST Data: {}", cleaned);
+
     // Send request to Azure
     let client = Client::new();
     let response = client
         .post(&url)
         .headers(headers)
-        .json(&req_body.into_inner())
+        .body(cleaned_body)
         .send()
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?;
@@ -88,11 +103,7 @@ async fn chat_completions(
     println!("Raw Azure response: {}", raw_response);
 
     if status.is_success() {
-        // Parse the raw response as JSON
-        let azure_response: serde_json::Value = serde_json::from_str(&raw_response)
-            .map_err(actix_web::error::ErrorInternalServerError)?;
-
-        Ok(HttpResponse::Ok().json(azure_response))
+        Ok(HttpResponse::Ok().body(raw_response))
     } else {
         // Handle error responses properly
         let actix_status = actix_web::http::StatusCode::from_u16(status.as_u16())
