@@ -38,7 +38,7 @@ async fn main() -> std::io::Result<()> {
         "/usr/bin/brave-browser-beta".to_string(),
     ));
 
-    #[cfg(feature = "default")]
+    #[cfg(feature = "llm_local")]
     {
         use crate::services::llm_local::ensure_llama_server_running;
 

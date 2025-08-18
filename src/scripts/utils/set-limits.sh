@@ -6,16 +6,16 @@ declare -A container_limits=(
      ["*tables*"]="4096MB:100ms/100ms"
      ["*dns*"]="2048MB:100ms/100ms"
      ["*doc-editor*"]="512MB:10ms/100ms"
-     ["*proxy*"]="20248MB:50ms/100ms"
+     ["*proxy*"]="2048MB:100ms/100ms"
      ["*directory*"]="1024MB:50ms/100ms"
-     ["*drive*"]="4096MB:25ms/100ms"
-     ["*email*"]="4096MB:50ms/100ms"
-     ["*webmail*"]="4096MB:50ms/100ms"
+     ["*drive*"]="4096MB:50ms/100ms"
+     ["*email*"]="4096MB:100ms/100ms"
+     ["*webmail*"]="4096MB:100ms/100ms"
      ["*bot*"]="4096MB:50ms/100ms"
      ["*meeting*"]="4096MB:100ms/100ms"
      ["*alm*"]="512MB:50ms/100ms"
-     ["*alm-ci*"]="4096MB:25ms/100ms"
-     ["*system*"]="4096MB:10ms/100ms"
+     ["*alm-ci*"]="4096MB:100ms/100ms"
+     ["*system*"]="4096MB:50ms/100ms"
      ["*mailer*"]="4096MB:25ms/100ms"
 )
 
@@ -23,7 +23,7 @@ declare -A container_limits=(
 DEFAULT_MEMORY="1024MB"
 DEFAULT_CPU_ALLOWANCE="15ms/100ms"
 CPU_COUNT=2
-CPU_PRIORITY=5
+CPU_PRIORITY=10
 
 for pattern in "${!container_limits[@]}"; do
     echo "Configuring $container..."
