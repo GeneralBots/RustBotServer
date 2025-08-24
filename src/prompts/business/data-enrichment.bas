@@ -6,6 +6,7 @@ FOR EACH item IN items
     let website = item.website ?? ""
     if item.website == "" {
         website = WEBSITE OF item.company
+        SET "gb.rob", "id="+ item.id, "website=" +  website
         PRINT website
     }
 

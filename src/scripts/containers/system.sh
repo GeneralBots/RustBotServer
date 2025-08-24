@@ -49,6 +49,7 @@ lxc config device add $CONTAINER_NAME bin disk source="${HOST_BIN}" path=/opt/gb
 lxc config device add $CONTAINER_NAME data disk source="${HOST_DATA}" path=/opt/gbo/data
 lxc config device add $CONTAINER_NAME conf disk source="${HOST_CONF}" path=/opt/gbo/conf
 lxc config device add $CONTAINER_NAME logs disk source="${HOST_LOGS}" path=/opt/gbo/logs
+lxc config device add $CONTAINER_NAME system-proxy disk source="/opt/gbo/tenants/$PARAM_TENANT/proxy" path=/opt/gbo/refs/proxy
 
 
 lxc config device remove $CONTAINER_NAME proxy 2>/dev/null || true
