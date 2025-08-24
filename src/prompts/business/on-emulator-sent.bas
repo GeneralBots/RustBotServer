@@ -8,5 +8,5 @@ FOR EACH item IN items
 
 	CREATE_DRAFT to, subject, body
     SET "gb.rob", "id="+ item.id, "ACTION=EMUL_ASKED"
-    WAIT 3000
+
 NEXT item

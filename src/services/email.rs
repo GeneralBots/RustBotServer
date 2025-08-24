@@ -245,9 +245,8 @@ pub async fn save_email_draft(
         .filter(|cc| !cc.is_empty())
         .map(|cc| format!("Cc: {}\r\n", cc))
         .unwrap_or_default();
-
     let email_message = format!(
-        "From: {}\r\nTo: {}\r\n{}Subject: {}\r\nDate: {}\r\n\r\n{}",
+        "From: {}\r\nTo: {}\r\n{}Subject: {}\r\nDate: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}",
         email_config.username,
         draft_data.to,
         cc_header,

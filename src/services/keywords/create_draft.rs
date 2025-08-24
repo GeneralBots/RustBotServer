@@ -38,10 +38,15 @@ async fn execute_create_draft(
     let get_result = fetch_latest_sent_to(&state.config.clone().unwrap().email, to).await;
     let email_body = if let Ok(get_result_str) = get_result {
         if !get_result_str.is_empty() {
-            let email_separator = "\n\n-------------------------------------------------\n\n"; // Horizontal rule style separator
-            reply_text.to_string() + email_separator + get_result_str.as_str()
+            let email_separator = "<br><hr><br>"; // Horizontal rule in HTML
+            let formatted_reply_text = reply_text.to_string();
+            let formatted_old_text = get_result_str.replace("\n", "<br>");
+            let fixed_reply_text = formatted_reply_text.replace("FIX", "Fixed");
+            format!(
+                "{}{}{}",
+                fixed_reply_text, email_separator, formatted_old_text
+            )
         } else {
-            // Fixed: Use reply_text when get_result_str is empty, not empty string
             reply_text.to_string()
         }
     } else {
@@ -56,10 +61,9 @@ async fn execute_create_draft(
         text: email_body,
     };
 
-    let save_result =
-        match save_email_draft(&state.config.clone().unwrap().email, &draft_request).await {
-            Ok(_) => Ok("Draft saved successfully".to_string()),
-            Err(e) => Err(e.to_string()),
-        };
-    save_result
+    let save_result = save_email_draft(&state.config.clone().unwrap().email, &draft_request).await;
+    match save_result {
+        Ok(_) => Ok("Draft saved successfully".to_string()),
+        Err(e) => Err(e.to_string()),
+    }
 }
